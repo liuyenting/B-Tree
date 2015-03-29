@@ -1,6 +1,9 @@
 # Test Data
 kddcup2012track2.txt
 
+# vi swap files
+*.swp
+
 # Compiled Object files
 *.slo
 *.lo
