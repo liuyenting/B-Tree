@@ -39,5 +39,9 @@ void BpTreeNode<TKey>::setParent(const BpTreeNode<TKey>& parent)
     parentNode = parent;
 }
 
-
+template<class TKey>
+bool BpTreeNode<TKey>::isOverflow()
+{
+    return getKeyCount() == keys.size();
+}
 

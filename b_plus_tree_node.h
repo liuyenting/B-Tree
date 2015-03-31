@@ -45,6 +45,13 @@ public:
     BpTreeNode<TKey>& dealUnderflow();
 
     virtual TreeNodeType getNodeType();
+    
+    /**
+     * Search a key on current node, and return its position if found,
+     * otherwise, return -1 for a leaf node.
+     * Return the child node index which should contain the key for a 
+     * internal node.
+     */
     virtual int search(const TKey&);
 };
 
