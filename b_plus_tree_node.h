@@ -24,7 +24,7 @@ public:
     BpTreeNode();
     ~BpTreeNode();
 
-    int getKeyCound();
+    int getKeyCount();
     bool isOverflow();
     bool isUnderflow();
     bool canLendAKey();
@@ -44,8 +44,8 @@ public:
     BpTreeNode<TKey>& dealOverflow();
     BpTreeNode<TKey>& dealUnderflow();
 
-    TreeNodeType getNodeType();
-    int search(const TKey&);
+    virtual TreeNodeType getNodeType();
+    virtual int search(const TKey&);
 };
 
 #endif
