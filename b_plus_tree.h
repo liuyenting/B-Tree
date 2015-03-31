@@ -1,20 +1,15 @@
 #ifndef __B_PLUS_TREE_H
 #define __B_PLUS_TREE_H
 
-class Element
-{
-};
-
+template<class TKey, class TValue>
 class BpTree
 {
 public:
     BpTree();
-    ~BpTree();
-    
-    Element search();
-    void update();
-    void add(const Element&);
-    void remove();
+
+    void insert(const TKey&, const TValue&);
+    TValue& search(const TKey&);
+    void remove(const TKey&);
 };
 
 #endif
