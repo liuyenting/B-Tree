@@ -1,6 +1,8 @@
 #ifndef __B_PLUS_TREE_NODE_H
 #define __B_PLUS_TREE_NODE_H
 
+#include <vector>
+
 template<class TKey>
 class BpTreeNode
 {
@@ -10,7 +12,18 @@ class BpTreeNode
         LeafNode
     };
 
+private:
+    int keyCount;
+    std::vector<TKey> keys;
+    
+    BpTreeNode<TKey> parentNode;
+    BpTreeNode<TKey> leftSibling;
+    BpTreeNode<TKey> rightSibling;
+
 public:
+    BpTreeNode();
+    ~BpTreeNode();
+
     int getKeyCound();
     bool isOverflow();
     bool isUnderflow();
