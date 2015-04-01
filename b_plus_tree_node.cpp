@@ -39,9 +39,60 @@ void BpTreeNode<TKey>::setParent(const BpTreeNode<TKey>& parent)
     parentNode = parent;
 }
 
+/* Codes below are used to support insertion operation */
 template<class TKey>
 bool BpTreeNode<TKey>::isOverflow()
 {
     return getKeyCount() == keys.size();
 }
+
+template<class TKey>
+BpTreeNode<TKey>& BpTreeNode<TKey>::dealOverflow()
+{
+    int midIndex = getKeyCount() / 2;
+    TKey upKey = getKey(midIndex);
+
+    BpTreeNode<TKey> newNode = split();
+
+    if(getParent() == NULL)
+        setParent(new BpTreeInnerNode<TKey>());
+    newNode.setParent(getParent());
+
+    // maintain links of sibling nodes
+    newNode.setLeftSibling(*this);
+    newNode.setRightSibling(rightSibling);
+    if(getRightSibling() != NULL)
+        getRightSibling().setLeftSibling(newNode);
+    setRightSibling(newNode);
+
+    // push up a key to parent internal node
+    return getParent().pushUpKey(upKey, *this, newNode);
+}
+
+template<class TKey>
+bool BpTreeNode<TKey>::isUnderflow()
+{
+    return getKeyCount() < (keys.size() / 2);
+}
+
+template<class TKey>
+bool BpTreeNode<TKey>::canLendAKey()
+{
+    return getKeyCount() > (keys.size() / 2);
+}
+
+template<class TKey>
+BpTreeNode<TKey>& BpTreeNode<TKey>::getLeftSibling()
+{
+    if((leftSibling != NULL) && (leftSibling.getParent() == getParent()))
+        return leftSibling;
+    return NULL;
+}
+
+template<class TKey>
+void BpTreeNode<TKey>::dealOverflowsetLeftSibling(const BpTreeNode<TKey>& sibling)
+{
+    leftSibling = sibling;
+}
+
 

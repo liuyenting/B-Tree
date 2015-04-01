@@ -35,7 +35,7 @@ public:
     BpTreeNode<TKey>& getParent();
     void setParent(const BpTreeNode<TKey>&);
 
-    BpTreeNode<TKey>& geLeftSibling();
+    BpTreeNode<TKey>& getLeftSibling();
     void setLeftSibling(const BpTreeNode<TKey>&);
 
     BpTreeNode<TKey>& getRightSibling();
@@ -45,7 +45,8 @@ public:
     BpTreeNode<TKey>& dealUnderflow();
 
     virtual TreeNodeType getNodeType();
-    
+    virtual BpTreeNode<TKey>& split();
+    virtual BpTreeNode<TKey> pushUpKey(const TKey&, const BpTreeNode<TKey>&, const BpTreeNode<TKey>&);
     /**
      * Search a key on current node, and return its position if found,
      * otherwise, return -1 for a leaf node.
