@@ -47,6 +47,13 @@ public:
     virtual TreeNodeType getNodeType();
     virtual BpTreeNode<TKey>& split();
     virtual BpTreeNode<TKey> pushUpKey(const TKey&, const BpTreeNode<TKey>&, const BpTreeNode<TKey>&);
+    
+    virtual void processChildrenTransfer(const BpTreeNode<TKey>&, const BpTreeNode<TKey>&, const int);
+    virtual BpTreeNode<TKey>& processChildrenFusion(const BpTreeNode<TKey>&, const BpTreeNode<TKey>&);
+
+    virtual void fusionWithSibling(const TKey&, const BpTreeNode<TKey>&);
+    virtual TKey& transferFromSibling(const TKey&, const BpTreeNode<TKey>&, const int&);
+    
     /**
      * Search a key on current node, and return its position if found,
      * otherwise, return -1 for a leaf node.

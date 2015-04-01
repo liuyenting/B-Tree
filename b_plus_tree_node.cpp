@@ -90,9 +90,50 @@ BpTreeNode<TKey>& BpTreeNode<TKey>::getLeftSibling()
 }
 
 template<class TKey>
-void BpTreeNode<TKey>::dealOverflowsetLeftSibling(const BpTreeNode<TKey>& sibling)
+void BpTreeNode<TKey>::setLeftSibling(const BpTreeNode<TKey>& sibling)
 {
     leftSibling = sibling;
 }
 
+template<class TKey>
+BpTreeNode<TKey>& BpTreeNode<TKey>::getRightSibling()
+{
+    if((rightSibling != NULL) && (rightSibling.getParent() == getParent()))
+        return rightSibling;
+    return NULL;
+}
+
+template<class TKey>
+void BpTreeNode<TKey>::setRightSibling(const BpTreeNode<TKey>& sibling)
+{
+    rightSibling = sibling;
+}
+
+template<class TKey>
+BpTreeNode<TKey>& BpTreeNode<TKey>::dealUnderflow()
+{
+    if(getParent() == NULL)
+        return NULL;
+    
+    // try to borrow a key from sibling
+    BpTreeNode<TKey> leftSiblingTemp = getLeftSibling();
+    if((leftSiblingTemp != NULL) && (leftSiblingTemp.canLendAKey()))
+    {
+        getParent().processChildrenTransfer(this, leftSiblingTemp, leftSiblingTemp.getKeyCount() - 1);
+        return NULL;
+    }
+
+    BpTreeNode<TKey> rightSiblingTemp = getRightSibling();
+    if((rightSiblingTemp != NULL) && (rightSiblingTemp.canLendAKey()))
+    {
+        getParent().processChildrenTransfer(this, rightSiblingTemp, 0);
+        return NULL;
+    }
+
+    // can not borrow a key from any sibling, then do fusion with wibling
+    if(leftSiblingTemp != NULL)
+        return getParent().processChildrenFusion(leftSiblingTemp, this);
+    else
+        return getParent().processChildrenFusion(this, rightSiblingTemp);
+}
 
