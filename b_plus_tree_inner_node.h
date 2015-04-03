@@ -16,7 +16,7 @@ public:
     BpTreeInnerNode();
 
     BpTreeNode<TKey>& getChild(const int);
-    void setChild(int, const BpTreeNode<TKey>);
+    void setChild(const int, BpTreeNode<TKey>&);
 
     enum class TreeNodeType getNodeType();
 
