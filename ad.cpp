@@ -35,37 +35,35 @@ struct key_comparer
     }
 };
 
-std::vector<std::string> &split(const std::string &str, char delim, std::vector<std::string> &elems)
+unsigned int parse_user_id(std::string &str, char delim)
 {
-    elems.empty();
-
     std::stringstream ss(str);
-    std::string item;
+    unsigned long result;
 
-    while(std::getline(ss, item, delim))
-        elems.push_back(item);
+    while(std::getline(ss, str, delim));
     
-    return elems;
+    std::stoul(str, &result, 10);
+    return static_cast<unsigned int>(result);
 }
 
-void construct_tree(std::ifstream& ifs, stx::btree_multimap<int, std::streampos, std::less<int> > &map)
+void construct_tree(std::ifstream& ifs, stx::btree_multimap<unsigned int, std::streamoff, std::less<unsigned int> >&map)
 {
     std::string new_line;
-    std::vector<std::string> parsed_line;
-    
-    parsed_line.reserve(12);
     
     int counter = 0;
     while(!ifs.eof())
     {
         std::getline(ifs, new_line);
-        split(new_line, '\t', parsed_line);
         
-        map.insert(std::pair<int, std::streampos>(std::stoi(parsed_line[11]), ifs.tellg()));
+        map.insert(std::pair<unsigned int, std::streamoff>(parse_user_id(new_line, '\t'), ifs.tellg()));
         
         counter++;
+        /*
         if((counter % 1000000) == 0)
             std::cout << "Item " << counter << " inserted." << std::endl;
+        */
+        if((counter / 1000000) == 10)
+            break;
     }
 
     std::cout << "Insertion complete!" << std::endl;
@@ -75,7 +73,7 @@ int main()
 {
     std::ifstream ifs(FILE_PATH, std::ifstream::in);
     
-    stx::btree_multimap<int, std::streampos, std::less<int> > BTreeMap;
+    stx::btree_multimap<unsigned int, std::streamoff, std::less<unsigned int> > BTreeMap;
     
     std::chrono::time_point<std::chrono::system_clock> start, end;
     start = std::chrono::system_clock::now();
