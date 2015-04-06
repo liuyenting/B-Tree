@@ -55,15 +55,20 @@ void construct_tree(std::ifstream& ifs, stx::btree_multimap<unsigned int, std::s
     {
         std::getline(ifs, new_line);
         
+        // Skip blank line
+        if(new_line.length() == 0)
+            continue;
+
         map.insert(std::pair<unsigned int, std::streamoff>(parse_user_id(new_line, '\t'), ifs.tellg()));
         
         counter++;
-        /*
+        
         if((counter % 1000000) == 0)
             std::cout << "Item " << counter << " inserted." << std::endl;
-        */
+        /*
         if((counter / 1000000) == 10)
             break;
+        */
     }
 
     std::cout << "Insertion complete!" << std::endl;
