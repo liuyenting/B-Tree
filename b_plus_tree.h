@@ -479,6 +479,208 @@ public:
             return (x.currentNode != currentNode) || (x.currentSlot != currentSlot);
         }
     };
+
+    // STL-like read-only iterator object for B+ tree items.
+    class const_iterator
+    {
+    public:
+        /* 
+         * Types
+         */
+
+        // Definition the same as in iterator class
+        typedef typename BpTree::key_type key_type;
+        typedef typename BpTree::data_type data_type;
+        typedef typename BpTree::value_type value_type;
+        typedef typename BpTree::pair_type pair_type;
+
+        typedef const value_type& reference;
+        typedef const value_type* pointer;
+
+        typedef std::bidirectional_iterator_tag iterator_category;
+        typedef ptrdiff_t difference_type;
+        typedef const_iterator self;
+
+    private:
+        /*
+         * Members
+         */
+
+        // Currently referenced leaf node of the tree
+        const typename BpTree::leaf_node* currentNode;
+
+        // Current key/data slot referenced
+        unsigned short currentSlot;
+
+        friend class const_reverse_iterator;
+
+        mutable value_type temp_value;
+
+    public:
+        /*
+         * Methods
+         */
+
+        // Default constructor of a const iterator
+        inline const_iterator() : currentNode(NULL), currentSlot(0)
+        {
+        }
+
+        // Initializing constructor of a const iterator
+        inline const_iterator(const typename BpTree::leaf_node *leaf, unsigned short slot) : currentNode(leaf), currentSlot(slot)
+        {
+        }
+
+        // Copy constructor from a mutable iterator
+        inline const_iterator(const iterator& itr) : currentNode(itr.currentNode), currentSlot(itr.currentSlot)
+        {
+        }
+
+        // Copy constructor from a mutable reverse iterator
+        inline const_iterator(const reverse_iterator& rev_itr) : currentNode(rev_itr.currentNode), currentSlot(rev_itr.currentSlot)
+        {
+        }
+
+        // Copy constructor from a const reverse iterator
+        inline const_iterator(const const_reverse_iterator& const_rev_itr) : currentNode(const_rev_itr.currentNode), currentSlot(const_rev_itr.currentSlot)
+        {
+        }
+
+        // Dereference the iterator.
+        // Do not use this if possible, use key() and data() instead.
+        inline reference operator*() const
+        {
+            temp_value = pair_to_value_type()(pair_type(key(), data()));
+            return temp_value;
+        }
+
+        inline pointer operator->() const
+        {
+            temp_value = pair_to_value_type()(pair_type(key(), data()));
+            return &temp_value;
+        }
+
+        // Key of the current slot
+        inline const key_type& key() const
+        {
+            return currentNode->slotKeys[currentSlot];
+        }
+
+        // Read-only reference to the current data object
+        inline const data_type& data() const
+        {
+            return currentNode->slotData[currentSlot];
+        }
+
+        // Prefeix ++ advance the iterator to the next slot
+        inline self& operator++()
+        {
+            if((currentSlot + 1) < currentNode->slotUsed)
+            {
+                ++currentSlot;
+            }
+            else if(currentNode->nextLeaf != NULL)
+            {
+                currentNode = currentNode->nextLeaf;
+                currentSlot = 0;
+            }
+            else
+            {
+                currentSlot = currentNode->slotUsed;
+            }
+
+            return *this;
+        }
+
+        // Postfix ++ advance the iterator to the next slot
+        inline self operator++(int)
+        {
+            // Backup current content
+            self tmp = *this;
+
+            if((currentSlot + 1) < currentNode->slotUsed)
+            {
+                ++currentSlot;
+            }
+            else if(currentNode->nextLeaf != NULL)
+            {
+                currentNode = currentNode->nextLeaf;
+                currentSlot = 0;
+            }
+            else
+            {
+                currentSlot = currentNode->slotUsed;
+            }
+
+            return tmp;
+        }
+
+        // Prefix -- backstep the iterator to the last slot
+        inline self& operator--() 
+        {
+            if(currentSlot > 0)
+            {
+                --currentSlot;
+            }
+            else if(currentNode->previousLeaf != NULL)
+            {
+                currentNode = currentNode->previousLeaf;
+                currentSlot = currentNode->slotUsed - 1;
+            }
+            else
+            {
+                currentSlot = 0;
+            }
+
+            return *this;
+        }
+
+        // Postfix -- backstep the iterator to the last slot
+        inline self operator--(int)
+        {
+            // Backup current content
+            self tmp = *this;
+
+            if(currentSlot > 0)
+            {
+                --currentSlot;
+            }
+            else if(currentNode->previousLeaf != NULL)
+            {
+                currentNode = currentNode->previousLeaf;
+                currentSlot = currentNode->slotUsed - 1;
+            }
+            else
+            {
+                currentSlot = 0;
+            }
+
+            return tmp;
+        }
+
+        // Equality of iterators
+        inline bool operator==(const self& x) const
+        {
+            return (x.currentNode == currentNode) && (x.currentSlot == currentSlot);
+        }
+
+        // Inequality of iterator
+        inline bool operator!=(const self& x) const
+        {
+            return (x.currentNode != currentNode) || (x.currentSlot != currentSlot);
+        }
+    };
+
+    // STL-like mutable reverse iterator object for B+ tree items.
+    class reverse_iterator
+    {
+    public:
+        /*
+         * Types
+         */
+
+        // Same definitions as iterator
+        
 };
 
 #endif
