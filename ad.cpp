@@ -16,10 +16,13 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#include <list>
+
 #include "btree_multimap.h"
 
 #ifndef REMOTE
-#define FILE_PATH "kddcup2012track2.txt"
+//#define FILE_PATH "kddcup2012track2.txt"
+#define FILE_PATH "kdd_sample"
 #else
 #define FILE_PATH "/tmp2/KDDCup2012/track2/kddcup2012track2.txt"
 #endif
@@ -68,12 +71,10 @@ struct key_comparer
 unsigned int parse_user_id(std::string &str, char delim)
 {
     std::stringstream ss(str);
-    unsigned long result;
 
     while(std::getline(ss, str, delim));
-    
-    std::stoul(str, &result, 10);
-    return static_cast<unsigned int>(result);
+
+    return static_cast<unsigned int>(std::stoi(str, 0, 10));
 }
 
 //void construct_tree(std::ifstream& ifs, stx::btree_multimap<unsigned int, std::streamoff, std::less<unsigned int> >&map)
@@ -84,6 +85,10 @@ void construct_tree(imemstream& ims, stx::btree_multimap<unsigned int, std::stre
     std::cout << "Start constructing tree." << std::endl;
     
     int counter = 0;
+
+    ims.clear();
+    std::cout << "Init fpos: " << ims.tellg() << std::endl;
+
     while(!ims.eof())
     {
         std::getline(ims, new_line);
@@ -93,7 +98,12 @@ void construct_tree(imemstream& ims, stx::btree_multimap<unsigned int, std::stre
         if(new_line.length() == 0)
             continue;
 
-        map.insert(std::pair<unsigned int, std::streamoff>(parse_user_id(new_line, '\t'), ims.tellg()));
+        /*
+        ims.clear();
+        map.insert(std::pair<unsigned int, std::streamoff>(parse_user_id(new_line, ' '), ims.tellg()));
+        ims.clear();
+        */
+        std::cout << "Current fpos: " << ims.tellg() << std::endl;
         
         counter++;
         
@@ -144,10 +154,50 @@ int main()
     start = std::chrono::system_clock::now();
     //construct_tree(ifs, BTreeMap);
     construct_tree(ims, BTreeMap);
+    /*
+    BTreeMap.insert(std::pair<unsigned int, std::streamoff>(0,0));
+    BTreeMap.insert(std::pair<unsigned int, std::streamoff>(0,1));
+    BTreeMap.insert(std::pair<unsigned int, std::streamoff>(0,2));
+    BTreeMap.insert(std::pair<unsigned int, std::streamoff>(1,3));
+    BTreeMap.insert(std::pair<unsigned int, std::streamoff>(2,4));
+    BTreeMap.insert(std::pair<unsigned int, std::streamoff>(3,5));
+    */
     end = std::chrono::system_clock::now();
 
     std::chrono::duration<double> elapsed_seconds = end - start;
     std::cout << "Elapsed time: " << elapsed_seconds.count() << std::endl;
+
+    std::pair<stx::btree_multimap<unsigned int, std::streamoff, std::less<unsigned int> >::iterator, 
+              stx::btree_multimap<unsigned int, std::streamoff, std::less<unsigned int> >::iterator> range;
+    range = BTreeMap.equal_range(490234);
+
+    std::list<std::streamoff> lst;
+
+    for(stx::btree_multimap<unsigned int, std::streamoff, std::less<unsigned int> >::iterator it = range.first; it != range.second; ++it)
+    {
+        lst.push_back(it->second);
+    }
+
+
+
+    std::cout << "Found (fpos) {" << std::endl;
+    for (auto it = lst.begin(); it != lst.end(); ++it)
+    {
+        ims.clear();
+
+        std::string buffer;
+        ims.seekg(*it, ims.beg);
+        
+        std::getline(ims, buffer);
+
+        std::cout << buffer << std::endl;
+    }
+    std::cout << " }" << std::endl;
+
+    // Unmap the file
+    if(munmap(data, fileSize) == -1)
+        throw "main(): Fail to un-mapping the file.";
+    close(fd);
 
     return 0;
 }
