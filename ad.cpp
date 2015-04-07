@@ -30,6 +30,8 @@
 #define FILE_PATH "kdd_sample"
 #endif
 
+#define DELIM '\t'
+
 #ifdef MMF
 struct membuf : std::streambuf
 {
@@ -111,7 +113,7 @@ void construct_tree(std::ifstream& stream, BpTreeMap& map)
         if(new_line.length() == 0)
             continue;
 
-        map.insert(std::pair<TKey, TData>(parse_user_id(new_line, '\t'), currentPos));
+        map.insert(std::pair<TKey, TData>(parse_user_id(new_line, DELIM), currentPos));
         
         counter++;
         
@@ -162,6 +164,7 @@ int main()
 
     BpTreeMap map;
     
+    std::cout << "Start creating tree..." << std::endl;
     std::chrono::time_point<std::chrono::system_clock> start, end;
     start = std::chrono::system_clock::now();
     construct_tree(stream, map);
@@ -170,12 +173,21 @@ int main()
     std::chrono::duration<double> elapsed_seconds = end - start;
     std::cout << "Elapsed time: " << elapsed_seconds.count() << std::endl;
 
+    std::cout << std::endl;
+
     std::pair<BpTreeMap::iterator, BpTreeMap::iterator> range;
+
+    std::cout << "Start searching tree..." << std::endl;
+    start = std::chrono::system_clock::now();
     range = map.equal_range(490234);
+    end = std::chrono::system_clock::now();
+
+    elapsed_seconds = end - start;
+    std::cout << "Elapsed time: " << elapsed_seconds.count() << std::endl;
 
     std::list<TData> lst;
 
-    for(BpTreeMap::iterator it = range.first; it != range.second; ++it)
+    for(auto it = range.first; it != range.second; ++it)
         lst.push_back(it->second);
 
     // Wipe the position flag
