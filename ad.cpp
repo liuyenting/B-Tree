@@ -49,6 +49,10 @@ struct imemstream : virtual membuf, std::istream
 };
 #endif
 
+typedef unsigned int TKey;
+typedef std::streamoff TData;
+typedef stx::btree_multimap<TKey, TData, std::less<unsigned int> > BpTreeMap;
+
 struct compound_key
 {
     int user_id;
@@ -58,7 +62,6 @@ struct compound_key
 /*
 typedef struct compound_key key;
 typedef std::streampos data;
-
 
 // Compare function for compound_key
 struct key_comparer
@@ -82,10 +85,10 @@ unsigned int parse_user_id(std::string &str, char delim)
     return static_cast<unsigned int>(std::stoi(str, 0, 10));
 }
 
-#ifndef MMF
-void construct_tree(std::ifstream& stream, stx::btree_multimap<unsigned int, std::streamoff, std::less<unsigned int> >&map)
+#ifdef MMF
+void construct_tree(imemstream& stream, BpTreeMap& map)
 #else
-void construct_tree(imemstream& stream, stx::btree_multimap<unsigned int, std::streamoff, std::less<unsigned int> >&map)
+void construct_tree(std::ifstream& stream, BpTreeMap& map)
 #endif
 {
     std::string new_line;
@@ -93,7 +96,7 @@ void construct_tree(imemstream& stream, stx::btree_multimap<unsigned int, std::s
     std::cout << "Start constructing tree." << std::endl;
     
     int counter = 0;
-    std::ifstream::pos_type currentPos = 0;
+    TData currentPos = 0;
 
     stream.clear();
     std::cout << "Init fpos: " << stream.tellg() << std::endl;
@@ -108,7 +111,7 @@ void construct_tree(imemstream& stream, stx::btree_multimap<unsigned int, std::s
         if(new_line.length() == 0)
             continue;
 
-        map.insert(std::pair<unsigned int, std::streamoff>(parse_user_id(new_line, '\t'), currentPos));
+        map.insert(std::pair<TKey, TData>(parse_user_id(new_line, '\t'), currentPos));
         
         counter++;
         
@@ -152,48 +155,31 @@ int main()
     else
         std::cout << "File mapped." << std::endl;
     
-    imemstream ims(reinterpret_cast<char*>(data), fileSize);
+    imemstream stream(reinterpret_cast<char*>(data), fileSize);
     #else
-    std::ifstream ifs(FILE_PATH, std::ifstream::in);
+    std::ifstream stream(FILE_PATH, std::ifstream::in);
     #endif
 
-    stx::btree_multimap<unsigned int, std::streamoff, std::less<unsigned int> > BTreeMap;
+    BpTreeMap map;
     
     std::chrono::time_point<std::chrono::system_clock> start, end;
     start = std::chrono::system_clock::now();
-    #ifndef MMF
-    construct_tree(ifs, BTreeMap);
-    #else
-    construct_tree(ims, BTreeMap);
-    #endif
-    /*
-    BTreeMap.insert(std::pair<unsigned int, std::streamoff>(0,0));
-    BTreeMap.insert(std::pair<unsigned int, std::streamoff>(0,1));
-    BTreeMap.insert(std::pair<unsigned int, std::streamoff>(0,2));
-    BTreeMap.insert(std::pair<unsigned int, std::streamoff>(1,3));
-    BTreeMap.insert(std::pair<unsigned int, std::streamoff>(2,4));
-    BTreeMap.insert(std::pair<unsigned int, std::streamoff>(3,5));
-    */
+    construct_tree(stream, map);
     end = std::chrono::system_clock::now();
 
     std::chrono::duration<double> elapsed_seconds = end - start;
     std::cout << "Elapsed time: " << elapsed_seconds.count() << std::endl;
 
-    std::pair<stx::btree_multimap<unsigned int, std::streamoff, std::less<unsigned int> >::iterator, 
-              stx::btree_multimap<unsigned int, std::streamoff, std::less<unsigned int> >::iterator> range;
-    range = BTreeMap.equal_range(490234);
+    std::pair<BpTreeMap::iterator, BpTreeMap::iterator> range;
+    range = map.equal_range(490234);
 
-    std::list<std::streamoff> lst;
+    std::list<TData> lst;
 
-    for(stx::btree_multimap<unsigned int, std::streamoff, std::less<unsigned int> >::iterator it = range.first; it != range.second; ++it)
+    for(BpTreeMap::iterator it = range.first; it != range.second; ++it)
         lst.push_back(it->second);
 
     // Wipe the position flag
-    #ifdef MMF
-    ims.clear();
-    #else
-    ifs.clear();
-    #endif
+    stream.clear();
 
     std::cout << "Found (fpos) {" << std::endl;
     for (auto it = lst.begin(); it != lst.end(); ++it)
@@ -202,14 +188,9 @@ int main()
 
         std::cout << "Seeking at: " << *it << std::endl;
 
-        #ifdef MMF
-        ims.seekg(*it, ims.beg);
-        std::getline(ims, buffer);
-        #else
-        ifs.seekg(*it, ifs.beg);
-        std::cout << "Current fpos: " << ifs.tellg() << std::endl;
-        std::getline(ifs, buffer);
-        #endif
+        stream.seekg(*it, stream.beg);
+        std::getline(stream, buffer);
+        std::cout << "Current fpos: " << stream.tellg() << std::endl;
 
         std::cout << buffer << std::endl;
     }
