@@ -6,9 +6,9 @@
 #ifdef REMOTE
 #define FILE_PATH "/tmp2/KDDCup2012/track2/kddcup2012track2.txt"
 #elif LOCAL
-#define FILE_PATH "kddcup2012track2.txt"
+#define FILE_PATH "./dat/kddcup2012track2.txt"
 #else
-#define FILE_PATH "kdd_sample"
+#define FILE_PATH "./dat/kdd_sample"
 #endif
 
 int main()
