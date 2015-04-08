@@ -1,34 +1,15 @@
-# Test Data
-kddcup2012track2.txt
+# Test data folder
+dat/
+
+# Object folder
+obj/
 
 # vi swap files
 *.swp
 
-# Compiled Object files
-*.slo
-*.lo
+# Compiled object files
 *.o
-*.obj
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
-
-# Fortran module files
-*.mod
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
 
 # Executables
-*.exe
+bin/
 *.out
-*.app
