@@ -203,8 +203,48 @@ namespace dsa
 		{
 			return click > 0;
 		}
+	};
 
-		bool isSatasfied
+	class KDD
+	{
+		friend Database;
+
+	private:
+		// list<template type>, input<filter, using template class>
+		std::list<std::pair<unsigned short, unsigned int> > get(unsigned int _user_id)
+		{
+
+		}
+
+		std::list<std::pair<unsigned short, unsigned int> > get(unsigned int _user_id,
+															    unsigned int _ad_id,
+															    unsigned int _query_id,
+															    unsigned char _position,
+															    unsigned char _depth)
+		{
+
+		}
+
+		double getCTR()
+
+	public:
+		// Output the sum of click and impression.
+		std::pair<unsigned int, unsigned long> get(unsigned int _user_id,
+												   unsigned int _ad_id,
+												   unsigned int _query_id,
+												   unsigned char _position,
+												   unsigned char _depth)
+		{
+
+		}
+
+		// Sort by ad_id, than query_id, in ascending mode.
+		std::list<std::pair<unsigned int, unsigned int> > clicked(unsigned int _user_id)
+		{
+
+		}
+
+
 	};
 }
 
