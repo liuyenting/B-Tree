@@ -128,9 +128,11 @@ namespace dsa
 		template <typename FieldType, enum field Field>
 		FieldType parse_field(std::string &str, const char& delim)
 		{
-			static_assert(std::is_same<FieldType, unsigned int>::value || 
+			static_assert(std::is_same<FieldType, unsigned char>::value ||
+						  std::is_same<FieldType, unsigned short>::value ||
+						  std::is_same<FieldType, unsigned int>::value || 
 						  std::is_same<FieldType, unsigned long long>::value,
-						  "parse_field(): Only int and long long are acceptable types.");
+						  "parse_field(): Designated template type isn't acceptable.");
 
 			FieldType result = 0;
 			int ptr = 0;
@@ -225,7 +227,7 @@ namespace dsa
 
 		}
 
-		double getCTR()
+		//double getCTR()
 
 	public:
 		// Output the sum of click and impression.
