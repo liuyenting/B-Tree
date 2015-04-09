@@ -109,7 +109,7 @@ upload:
 	rsync -e 'ssh -i $(KEY_FILE)' --exclude-from '.gitignore' -avP * $(ACCOUNT)@$(SERVER):~/DSA/
 
 run_remote:
-	ssh -i $(KEY_FILE) $(ACCOUNT)@$(SERVER)
+	ssh -i $(KEY_FILE) $(ACCOUNT)@$(SERVER) "cd ~/DSA && make run"
 # ====================
 
 
