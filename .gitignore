@@ -4,6 +4,9 @@ dat/
 # Object folder
 obj/
 
+# Key folder
+key/
+
 # vi swap files
 *.swp
 
