@@ -1,6 +1,7 @@
 #ifndef _AD_DATABASE_H
 #define _AD_DATABASE_H
 
+#include <stdexcept>
 #include <iostream>
 #include <fstream>
 #include <type_traits>
@@ -71,7 +72,7 @@ namespace dsa
 		{
 			stream.open(file_path, std::ifstream::in);
 			if(!stream.is_open())
-				throw "Database(): Fail to open file.";
+				throw std::runtime_error("Database(): Fail to open file.");
 
 			construct_tree(stream, map);
 		}
@@ -153,7 +154,7 @@ namespace dsa
 				if(str[ptr] == delim)
 					idx++;
 				if(str[ptr] == NEWLINE)
-					throw "parse_field(): Field out of range.";
+					throw std::runtime_error("parse_field(): Field out of range.");
 			}
 
 			// Start extracting the number.
