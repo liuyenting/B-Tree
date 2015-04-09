@@ -5,6 +5,8 @@
 #include <fstream>
 #include <type_traits>
 
+#include <list>
+
 #include "btree_multimap.h"
 
 // Definitions for field parsing
@@ -73,6 +75,11 @@ namespace dsa
 
 		~Database()
 		{
+		}
+
+		std::ifstream& get_stream()
+		{
+			return stream;
 		}
 
 		void construct_tree(std::ifstream& stream, BpTreeMap& map)
@@ -213,16 +220,16 @@ namespace dsa
 
 	private:
 		// list<template type>, input<filter, using template class>
-		std::list<std::pair<unsigned short, unsigned int> > get(unsigned int _user_id)
+		std::list<std::pair<unsigned short, unsigned int> > _get(unsigned int _user_id)
 		{
 
 		}
 
-		std::list<std::pair<unsigned short, unsigned int> > get(unsigned int _user_id,
-															    unsigned int _ad_id,
-															    unsigned int _query_id,
-															    unsigned char _position,
-															    unsigned char _depth)
+		std::list<std::pair<unsigned short, unsigned int> > _get(unsigned int _user_id,
+															     unsigned int _ad_id,
+															     unsigned int _query_id,
+															     unsigned char _position,
+															     unsigned char _depth)
 		{
 
 		}
