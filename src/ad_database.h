@@ -70,6 +70,9 @@ namespace dsa
 		Database(const std::string& file_path)
 		{
 			stream.open(file_path, std::ifstream::in);
+			if(!stream.is_open())
+				throw "Database(): Fail to open file.";
+
 			construct_tree(stream, map);
 		}
 

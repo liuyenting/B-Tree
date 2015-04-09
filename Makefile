@@ -2,12 +2,21 @@
 # Envirnoment setup
 # ====================
 CXX = g++-4.9
-override CFLAGS = -Wall -O3 -std=c++11
 
 # Directories
 SRC_DIR := src/
 OBJ_DIR := obj/
 BIN_DIR := bin/
+DAT_DIR := dat/
+
+# Setup CFLAGS for LOCAL/REMOTE differences
+ifeq ($(wildcard ./$(DAT_DIR)),)
+	CFLAGS = -DREMOTE
+else
+	CFLAGS = -DLOCAL
+endif
+override CFLAGS += -Wall -O3 -std=c++11
+
 
 # Create directories if not exist
 $(OBJ_DIR):
@@ -16,7 +25,7 @@ $(OBJ_DIR):
 
 $(BIN_DIR):
 	@echo "Create BIN_DIR at '$(BIN_DIR)'."
-	mkdir $@
+	@mkdir $@
 
 # Source files in sequence
 SRC_FILES := src/demo.cpp
@@ -29,6 +38,10 @@ MAIN = dsa_hw2-4
 KEY_FILE = key/csie_workstation
 ACCOUNT = b03902036
 SERVER = linux1.csie.ntu.edu.tw
+
+# Remote command
+REMOTE_BASE_DIR = ~/DSA
+COMMAND =
 # ====================
 
 
@@ -66,18 +79,14 @@ help:
 # ====================
 # Compile related
 # ====================
-all: build_local
-	@echo "Complete!"
+all: build
 
-build_local: CFLAGS += -DLOCAL
-build_local: build
-	@echo "Binary based on LOCAL path is built."
+build: $(BIN_DIR) $(OBJ_DIR) $(MAIN)
+	@echo "Compile complete."
 
-build_remote: upload
-	ssh -i $(KEY_FILE) $(ACCOUNT)@$(SERVER) "cd ~/DSA && make build CFLAGS+=-DREMOTE"
-	@echo "Binary based on REMOTE path is built."
-
-build: clean $(BIN_DIR) $(OBJ_DIR) $(MAIN)
+debug: CFLAGS += -DDEBUG
+debug: build
+	@mv $(BIN_DIR)$(MAIN) $(BIN_DIR)$(MAIN)_debug
 
 $(MAIN): $(OBJ_FILES)
 	@echo "Linking all the object files..."
@@ -86,19 +95,6 @@ $(MAIN): $(OBJ_FILES)
 $(OBJ_DIR)%.o: $(SRC_DIR)%.cpp
 	@echo "Compiling $<..." 
 	@$(CXX) $(CFLAGS) $(INCLUDES) -c -o $@ $<
-
-
-debug_local: CFLAGS += -DLOCAL
-debug_local: debug
-	@echo "Debug binary based on LOCAL path is built."
-
-debug_remote: upload
-	ssh -i $(KEY_FILE) $(ACCOUNT)@$(SERVER) "cd ~/DSA && make debug CFLAGS+=-DREMOTE"
-	@echo "Debug binary based on REMOTE path is built."
-
-debug: CFLAGS += -DDEBUG
-debug: build
-	@mv $(BIN_DIR)$(MAIN) $(BIN_DIR)$(MAIN)_debug
 # ====================
 
 
@@ -106,19 +102,30 @@ debug: build
 # Workstation related
 # ====================
 upload:
-	rsync -e 'ssh -i $(KEY_FILE)' --exclude-from '.gitignore' -avP * $(ACCOUNT)@$(SERVER):~/DSA/
+	@echo "Uploading to $(ACCOUNT)@$(SERVER)..."
+	@rsync -e 'ssh -i $(KEY_FILE)' --exclude-from '.gitignore' -avP * $(ACCOUNT)@$(SERVER):~/DSA/
 
-run_remote:
-	ssh -i $(KEY_FILE) $(ACCOUNT)@$(SERVER) "cd ~/DSA && make run"
+remote_build: COMMAND = make build
+remote_build: remote
+
+remote_debug: COMMAND = make debug
+remote_debug: remote
+
+remote_run: COMMAND = make run
+remote_run: remote
+
+remote_clean: COMMAND = make clean
+remote_clean: remote
+
+remote:
+	@ssh -i $(KEY_FILE) $(ACCOUNT)@$(SERVER) "cd $(REMOTE_BASE_DIR) && $(COMMAND)"
 # ====================
 
 
 # ====================
 # Local related
 # ====================
-run: run_local
-
-run_local:
+run:
 ifneq ($(wildcard $(BIN_DIR)$(MAIN)),)
 	./$(BIN_DIR)$(MAIN)
 else ifneq ($(wildcard $(BIN_DIR)$(MAIN)_debug),)
