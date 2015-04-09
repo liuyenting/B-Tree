@@ -17,7 +17,6 @@ else
 endif
 override CFLAGS += -Wall -O3 -std=c++11
 
-
 # Create directories if not exist
 $(OBJ_DIR):
 	@echo "Create OBJ_DIR at '$(OBJ_DIR)'."
@@ -53,23 +52,19 @@ help:
 	@echo
 	@echo "===== Makefile Help Message ====="
 	@echo
-	@echo "all\t\tAn alias for 'build_local'."
+	@echo "all\t\tBuild and run the project."
+	@echo
+	@echo "build\t\tBuild the project from '$(SRC_DIR)'."
 	@echo "debug\t\tBuild the project with debug flag being set."
-	@echo
-	@echo "build_local\tBuild the project from '$(SRC_DIR)', using LOCAL path."
-	@echo "build_remote\tSend the entire project to workstation and build there."
-	@echo
-	@echo "upload\t\tUpload the compiled binary to server."
-	@echo
-	@echo "run\t\tAn alias for 'run_local'."
-	@echo "run_local\tRun the binary locally."
-	@echo "run_remote\tRun the binary on the workstation."
-	@echo
+	@echo "run\t\tRun the binary locally."
 	@echo "clean\t\tWipe out all the object files and binaries."
+	@echo
+	@echo "upload\t\tUpload the project to workstation."
 	@echo
 	@echo "help\t\tShow this help message."
 	@echo
 	@echo "* Default action for 'make' is set to '$(.DEFAULT_GOAL)'."
+	@echo "* Use 'remote_' prefix for workstation access, e.g. remote_run"
 	@echo
 	@echo "================================="
 	@echo
@@ -79,7 +74,7 @@ help:
 # ====================
 # Compile related
 # ====================
-all: build
+all: build run
 
 build: $(BIN_DIR) $(OBJ_DIR) $(MAIN)
 	@echo "Compile complete."
