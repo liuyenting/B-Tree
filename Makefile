@@ -2,12 +2,21 @@
 # Envirnoment setup
 # ====================
 CXX = g++-4.9
-CFLAGS = -Wall -O3 -std=c++11
+override CFLAGS = -Wall -O3 -std=c++11
 
 # Directories
 SRC_DIR := src/
 OBJ_DIR := obj/
 BIN_DIR := bin/
+
+# Create directories if not exist
+$(OBJ_DIR):
+	@echo "Create OBJ_DIR at '$(OBJ_DIR)'."
+	@mkdir $@
+
+$(BIN_DIR):
+	@echo "Create BIN_DIR at '$(BIN_DIR)'."
+	mkdir $@
 
 # Source files in sequence
 SRC_FILES := src/demo.cpp
@@ -15,6 +24,11 @@ OBJ_FILES := $(addprefix $(OBJ_DIR),$(notdir $(SRC_FILES:.cpp=.o)))
 
 # Main executable
 MAIN = dsa_hw2-4
+
+# Workstation setup
+KEY_FILE = key/csie_workstation
+ACCOUNT = b03902036
+SERVER = linux1.csie.ntu.edu.tw
 # ====================
 
 
@@ -56,14 +70,13 @@ all: clean build_local
 	@echo "Complete!"
 
 build_local: CFLAGS += -DLOCAL
-build_local: clean $(MAIN)
+build_local: build
 	@echo "Binary based on LOCAL path is built."
 
-build_remote: CFLAGS += -DREMOTE
-build_remote: 
-	# send make file to server
-	# execute make file
-	@echo "Binary based on REMOTE path is built."
+build_remote: upload
+		ssh -i $(KEY_FILE) $(ACCOUNT)@$(SERVER) "pwd && cd ~/DSA && make build CFLAGS+=-DREMOTE"
+
+build: clean $(BIN_DIR) $(OBJ_DIR) $(MAIN)
 
 $(MAIN): $(OBJ_FILES)
 	@echo "Linking all the object files..."
@@ -83,8 +96,10 @@ debug: all
 # Workstation related
 # ====================
 upload:
+	rsync -e 'ssh -i $(KEY_FILE)' --exclude-from '.gitignore' -avP * $(ACCOUNT)@$(SERVER):~/DSA/
 
 run_remote:
+	ssh -i $(KEY_FILE) $(ACCOUNT)@$(SERVER)
 # ====================
 
 
@@ -103,8 +118,8 @@ else
 endif
 
 clean:
-	@rm -rf obj/*
-	@echo "'obj' wiped..."
-	@rm -rf bin/*
-	@echo "'bin' wiped..."
+	@rm -rf $(OBJ_DIR)
+	@echo "'$(OBJ_DIR)' wiped..."
+	@rm -rf $(BIN_DIR)
+	@echo "'$(BIN_DIR)' wiped..."
 # ====================
