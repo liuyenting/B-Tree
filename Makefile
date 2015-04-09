@@ -66,7 +66,7 @@ help:
 # ====================
 # Compile related
 # ====================
-all: clean build_local
+all: build_local
 	@echo "Complete!"
 
 build_local: CFLAGS += -DLOCAL
@@ -74,7 +74,8 @@ build_local: build
 	@echo "Binary based on LOCAL path is built."
 
 build_remote: upload
-		ssh -i $(KEY_FILE) $(ACCOUNT)@$(SERVER) "pwd && cd ~/DSA && make build CFLAGS+=-DREMOTE"
+	ssh -i $(KEY_FILE) $(ACCOUNT)@$(SERVER) "cd ~/DSA && make build CFLAGS+=-DREMOTE"
+	@echo "Binary based on REMOTE path is built."
 
 build: clean $(BIN_DIR) $(OBJ_DIR) $(MAIN)
 
@@ -86,8 +87,17 @@ $(OBJ_DIR)%.o: $(SRC_DIR)%.cpp
 	@echo "Compiling $<..." 
 	@$(CXX) $(CFLAGS) $(INCLUDES) -c -o $@ $<
 
+
+debug_local: CFLAGS += -DLOCAL
+debug_local: debug
+	@echo "Debug binary based on LOCAL path is built."
+
+debug_remote: upload
+	ssh -i $(KEY_FILE) $(ACCOUNT)@$(SERVER) "cd ~/DSA && make debug CFLAGS+=-DREMOTE"
+	@echo "Debug binary based on REMOTE path is built."
+
 debug: CFLAGS += -DDEBUG
-debug: all
+debug: build
 	@mv $(BIN_DIR)$(MAIN) $(BIN_DIR)$(MAIN)_debug
 # ====================
 
