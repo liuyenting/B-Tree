@@ -122,9 +122,9 @@ remote:
 # ====================
 run:
 ifneq ($(wildcard $(BIN_DIR)$(MAIN)),)
-	./$(BIN_DIR)$(MAIN)
+	@./$(BIN_DIR)$(MAIN)
 else ifneq ($(wildcard $(BIN_DIR)$(MAIN)_debug),)
-	./$(BIN_DIR)$(MAIN)_debug
+	@./$(BIN_DIR)$(MAIN)_debug
 else
 	@echo "Please execute 'make all' or 'make debug' first."
 endif
