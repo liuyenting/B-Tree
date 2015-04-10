@@ -1,11 +1,18 @@
 #ifndef _AD_DATABASE_H
 #define _AD_DATABASE_H
 
+// Includes mainly for class Database
 #include <stdexcept>
 #include <iostream>
 #include <fstream>
 #include <type_traits>
 
+// Includes mainly for class Entry
+#include <sstream>
+
+// Includes mainly for class KDD
+#include <algorithm>
+#include <map>
 #include <list>
 
 #include "btree_multimap.h"
@@ -169,6 +176,9 @@ namespace dsa
 
 			return result;
 		}
+
+		// Friend classes
+		friend class KDD;
 	};
 
 	class Entry
@@ -187,15 +197,66 @@ namespace dsa
 		unsigned int description_id;
 		unsigned int user_id;
 
-		void composite_entry(const std::string& str)
+	public:
+		// Getters
+		// getters for get()
+		unsigned short get_click() const
 		{
+			return click;
+		}
 
+		unsigned int get_impression() const
+		{
+			return impression;
+		}
+
+		// getters for clicked()
+		unsigned int get_ad_id() const
+		{
+			return ad_id;
+		}
+
+		unsigned int get_query_id() const
+		{
+			return query_id;
+		}
+
+		// getters for impression()
+		unsigned long long get_display_url() const
+		{
+			return display_url;
+		}
+		
+		unsigned short get_advertiser_id() const
+		{
+			return advertiser_id;
+		}
+
+		unsigned int get_keyword_id() const
+		{
+			return keyword_id;
+		}
+
+		unsigned int get_title_id() const
+		{
+			return title_id;
+		}
+
+		unsigned int get_description_id() const
+		{
+			return description_id;
 		}
 
 	public:
-		Entry()
+		Entry(const std::string& entry)
 		{
-
+			std::istringstream iss(entry);
+			iss >> click >> impression 
+			    >> display_url >> ad_id >> advertiser_id
+			    >> depth >> position
+			    >> query_id >> keyword_id >> title_id
+			    >> description_id
+			    >> user_id;
 		}
 
 		// Functions for filtering
@@ -203,7 +264,7 @@ namespace dsa
 				   unsigned int _ad_id,
 				   unsigned int _query_id,
 				   unsigned char _position,
-				   unsigned char _depth)
+				   unsigned char _depth) const
 		{
 			return (_user_id == user_id) &&
 				   (_ad_id == ad_id) &&
@@ -212,52 +273,134 @@ namespace dsa
 				   (_depth == depth);
 		}
 
-		bool isClicked()
+		bool hasClicked() const
 		{
 			return click > 0;
+		}
+
+		bool hasImpression() const
+		{
+			return impression > 0;
 		}
 	};
 
 	class KDD
 	{
-		friend Database;
-
 	private:
-		// list<template type>, input<filter, using template class>
-		std::list<std::pair<unsigned short, unsigned int> > _get(unsigned int _user_id)
+		static std::list<TData> _filter_by_user_id(Database& database, unsigned int _user_id)
 		{
+			// Search in database
+			auto range = database.map.equal_range(_user_id);
 
+			std::list<TData> lst;
+			for(auto it = range.first; it != range.second; ++it)
+				lst.push_back(it->second);
+
+			return lst;
 		}
 
-		std::list<std::pair<unsigned short, unsigned int> > _get(unsigned int _user_id,
-															     unsigned int _ad_id,
-															     unsigned int _query_id,
-															     unsigned char _position,
-															     unsigned char _depth)
+	//
+	// get()
+	//
+	private:
+		static std::list<Entry> _filter_by_user_id_wrapper(Database& database, unsigned int _user_id)
 		{
+			// Reset the stream
+			database.stream.clear();
 
+			// Start conversion
+			std::list<Entry> lst;
+			for(const auto& elem : _filter_by_user_id(database, _user_id))
+			{
+				std::string buffer;
+				database.stream.seekg(elem, database.stream.beg);
+				std::getline(database.stream, buffer);
+
+				lst.push_back(Entry(buffer));
+			}
+
+			return lst;
 		}
-
-		//double getCTR()
 
 	public:
 		// Output the sum of click and impression.
-		std::pair<unsigned int, unsigned long> get(unsigned int _user_id,
-												   unsigned int _ad_id,
-												   unsigned int _query_id,
-												   unsigned char _position,
-												   unsigned char _depth)
+		static std::pair<unsigned int, unsigned long> get(Database& database,
+														  unsigned int _user_id,
+												   		  unsigned int _ad_id, unsigned int _query_id,
+												   		  unsigned char _position, unsigned char _depth)
 		{
+			unsigned int clicks = 0;
+			unsigned long impression = 0;
+
+			for(const auto& elem : _filter_by_user_id_wrapper(database, _user_id))
+			{
+				if(elem.isGet(_user_id, _ad_id, _query_id, _position, _depth))
+				{
+					clicks += elem.get_click();
+					impression += elem.get_impression();
+				}
+			}
+
+			return std::pair<unsigned int, unsigned long>(clicks, impression);
+		}
+
+	//
+	// clicked()
+	//
+	public:
+		static std::list<std::pair<unsigned int, unsigned int> > clicked(Database& database, unsigned int _user_id)
+		{
+			std::list<std::pair<unsigned int, unsigned int> > lst;
+			for(const auto& elem : _filter_by_user_id_wrapper(database, _user_id))
+			{
+				if(elem.hasClicked())
+					lst.push_back(std::pair<unsigned int, unsigned int>(elem.get_ad_id(), elem.get_query_id()));
+			}
+
+			// Sort in ascending mode and then remove duplicate entries.
+			lst.sort();
+			lst.unique();
+
+			return lst;
+		}
+
+	//
+	// impressed()
+	//
+	private:
+		static struct ad_id_comaprer
+		{
+		    bool operator()(Entry const& lhs, Entry const& rhs)
+		    {
+		    	if(!lhs.hasImpression() || !rhs.hasImpression())
+		    		return false
+		    	else
+			    	return lhs.get_ad_id() == rhs.get_ad_id();
+		    }
+		};
+
+	public:
+		static std::map<unsigned int, std::list<Entry> > impressed(Database& database,
+																   unsigned int _user_id_1, unsigned int _user_id_2)
+		{
+			// Acquire the intersected ads between both users
+			std::list<Entry> user_1 = _filter_by_user_id_wrapper(database, _user_id_1);
+			std::list<Entry> user_2 = _filter_by_user_id_wrapper(database, _user_id_2);
+			std::list<Entry> intersection;
+			// Contents in lists are already sorted, since they are extracted from file indices.
+			std::set_intersection(user_1.begin(), user_1.end(),
+								  user_2.begin(), user_2.end(),
+								  std::back_inserter(intersection),
+								  ad_id_comaprer())
+
+			std::map<unsigned int, std::list<Entry> > map;
 
 		}
 
-		// Sort by ad_id, than query_id, in ascending mode.
-		std::list<std::pair<unsigned int, unsigned int> > clicked(unsigned int _user_id)
-		{
-
-		}
-
-
+	//
+	// profit()
+	//	
+	public:
 	};
 }
 
