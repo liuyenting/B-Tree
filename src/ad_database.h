@@ -121,8 +121,7 @@ namespace dsa
 				if(new_line.length() == 0)
 					continue;
 
-				map.insert(std::pair<TKey, TData>(parse_field<TKey, USER_ID>(new_line, DELIM), 
-												  currentPos));
+				map.insert(std::make_pair(parse_field<TKey, USER_ID>(new_line, DELIM), currentPos));
 
 				#ifdef DEBUG
 				counter++;
@@ -359,7 +358,7 @@ namespace dsa
 			for(const auto& elem : _filter_by_user_id_wrapper(database, _user_id))
 			{
 				if(elem.hasClicked())
-					lst.push_back(std::pair<unsigned int, unsigned int>(elem.get_ad_id(), elem.get_query_id()));
+					lst.push_back(std::make_pair(elem.get_ad_id(), elem.get_query_id()));
 			}
 
 			// Sort in ascending mode and then remove duplicate entries.
