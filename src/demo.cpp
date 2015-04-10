@@ -98,6 +98,18 @@ void profit(dsa::Database& database)
 	#ifdef DEBUG
 	std::cout << "profit() called." << std::endl;
 	#endif
+
+	unsigned int a;
+	double ctr;
+	std::cin >> a >> ctr;
+	#ifdef DEBUG
+	std::cout << "Parameter: (a, ctr) = (" 
+			  << a << ", "
+			  << ctr << ")" << std::endl;
+	#endif
+
+	PRINT_SEPARATOR
+	PRINT_SEPARATOR
 }
 
 typedef void (*FuncPtr)(dsa::Database&);

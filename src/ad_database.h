@@ -416,6 +416,11 @@ namespace dsa
 	// profit()
 	//	
 	public:
+		static std::list<TKey> profit(Database& database,
+									  unsigned int _ad_id, double _ctr_threshold)
+		{
+			
+		}
 	};
 }
 
