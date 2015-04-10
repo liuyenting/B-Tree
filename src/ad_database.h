@@ -383,17 +383,21 @@ namespace dsa
 		{
 			// Acquire the intersected ads between both users
 			std::list<Entry> user_1 = _filter_by_user_id_wrapper(database, _user_id_1);
+			std::cout << "user_1 filtered" << std::endl;
 			std::list<Entry> user_2 = _filter_by_user_id_wrapper(database, _user_id_2);
+			std::cout << "user_2 filtered" << std::endl;
 			std::list<Entry> intersection;
 			// Sort the list
 			user_1.sort(ad_id_list_comparer);
+			std::cout << "user_1 sorted" << std::endl;
 			user_2.sort(ad_id_list_comparer);
+			std::cout << "user_2 sorted" << std::endl;
 			// Find the intersected ads between user1 and user2
 			std::set_intersection(user_1.begin(), user_1.end(),
 								  user_2.begin(), user_2.end(),
 								  std::back_inserter(intersection),
 								  [](Entry const& lhs, Entry const& rhs) { return lhs.get_ad_id() < rhs.get_ad_id(); } );
-
+			std::cout << "intersection found" << std::endl;
 			// Refine the result for map
 			std::map<unsigned int, std::list<Entry> > map;
 			for(const auto& elem : intersection)
@@ -419,7 +423,7 @@ namespace dsa
 		static std::list<TKey> profit(Database& database,
 									  unsigned int _ad_id, double _ctr_threshold)
 		{
-			
+
 		}
 	};
 }
