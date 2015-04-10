@@ -9,8 +9,8 @@
 #ifdef REMOTE
 #define FILE_PATH "/tmp2/KDDCup2012/track2/kddcup2012track2.txt"
 #elif LOCAL
-#define FILE_PATH "./dat/kddcup2012track2.txt"
-//#define FILE_PATH "./dat/demotrack.txt"
+//#define FILE_PATH "./dat/kddcup2012track2.txt"
+#define FILE_PATH "./dat/demotrack.txt"
 #else
 #define MANUAL_FILE_PATH
 #endif
@@ -75,7 +75,7 @@ void impressed(dsa::Database& database)
 	#endif
 
 	PRINT_SEPARATOR
-	std::map<unsigned int, std::list<Entry> > result = dsa::KDD::impressed(database, u1, u2);
+	std::map<unsigned int, std::list<dsa::Entry> > result = dsa::KDD::impressed(database, u1, u2);
 	for(const auto& elem : result)
 	{
 		std::cout << elem.first << std::endl;
@@ -87,7 +87,7 @@ void impressed(dsa::Database& database)
 					  << prop.get_keyword_id() << ' '
 					  << prop.get_title_id() << ' '
 					  << prop.get_description_id()
-					  << std::endl
+					  << std::endl;
 		}
 	}
 	PRINT_SEPARATOR

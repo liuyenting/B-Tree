@@ -247,6 +247,11 @@ namespace dsa
 			return description_id;
 		}
 
+		unsigned int get_user_id() const
+		{
+			return user_id;
+		}
+
 	public:
 		Entry(const std::string& entry)
 		{
@@ -368,16 +373,10 @@ namespace dsa
 	// impressed()
 	//
 	private:
-		static struct ad_id_comaprer
-		{
-		    bool operator()(Entry const& lhs, Entry const& rhs)
-		    {
-		    	if(!lhs.hasImpression() || !rhs.hasImpression())
-		    		return false
-		    	else
-			    	return lhs.get_ad_id() == rhs.get_ad_id();
-		    }
-		};
+		static bool ad_id_list_comparer(Entry const& lhs, Entry const& rhs)
+	    {
+	    	return lhs.get_ad_id() < rhs.get_ad_id();
+	    }
 
 	public:
 		static std::map<unsigned int, std::list<Entry> > impressed(Database& database,
@@ -387,14 +386,31 @@ namespace dsa
 			std::list<Entry> user_1 = _filter_by_user_id_wrapper(database, _user_id_1);
 			std::list<Entry> user_2 = _filter_by_user_id_wrapper(database, _user_id_2);
 			std::list<Entry> intersection;
-			// Contents in lists are already sorted, since they are extracted from file indices.
+			// Sort the list
+			user_1.sort(ad_id_list_comparer);
+			user_2.sort(ad_id_list_comparer);
+			// Find the intersected ads between user1 and user2
 			std::set_intersection(user_1.begin(), user_1.end(),
 								  user_2.begin(), user_2.end(),
 								  std::back_inserter(intersection),
-								  ad_id_comaprer())
+								  [](Entry const& lhs, Entry const& rhs) { return lhs.get_ad_id() < rhs.get_ad_id(); } );
 
+			// Refine the result for map
 			std::map<unsigned int, std::list<Entry> > map;
+			for(const auto& elem : intersection)
+			{
+				// Append the property into list if exists
+				if(map.count(elem.get_ad_id()))
+					map[elem.get_ad_id()].push_back(elem);
+				else
+				{
+					std::list<Entry> tmp_lst;
+					tmp_lst.push_back(elem);
+					map.insert(std::make_pair(elem.get_ad_id(), tmp_lst));
+				}
+			}
 
+			return map;
 		}
 
 	//
