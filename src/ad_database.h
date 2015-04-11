@@ -490,7 +490,6 @@ namespace dsa
 			    result.insert(result.end(), result_private.begin(), result_private.end());
 			}
 			
-
 			return result;
 		}
 
@@ -601,18 +600,27 @@ namespace dsa
 		{
 			std::vector<TKey> lst;
 
+			#ifdef DEBUG
+			// Variable for timing
+		    std::chrono::time_point<std::chrono::system_clock> start, end;
+	        std::chrono::duration<double> elapsed_seconds;
+
+			// Start timer
+			start = std::chrono::system_clock::now();
+			#endif
+			#pragma omp parallel
+			{
+			std::vector<TKey> lst_private;
 			for(BpTreeMap::iterator it = database.map.begin();
 				it != database.map.end(); 
 				it = database.map.upper_bound(it->first))
+			#pragma omp single nowait
 			{
 				unsigned int clicks = 0;
 				unsigned long impression = 0;
 
 				TKey tmp = it->first;
 
-				#ifdef DEBUG
-				std::cout << "Testing user: " << tmp << std::endl;
-				#endif
 				for(const auto& elem : _filter_by_user_id_wrapper(database, tmp))
 				{
 					if(elem.get_ad_id() == _ad_id)
@@ -621,25 +629,28 @@ namespace dsa
 						impression += elem.get_impression();
 					}
 				}
-				#ifdef DEBUG
-				std::cout << "CTR: " << ((double)clicks / impression) << std::endl << std::endl;
-				#endif
 
 				if((clicks == 0) && (impression == 0))
 				{
 					if(_ctr_threshold == 0)
-						lst.push_back(tmp);
+						lst_private.push_back(tmp);
 				}
-				else if(impression == 0)
-					continue;
-				else if(((double)clicks / impression) >= _ctr_threshold)
-					lst.push_back(tmp);
-
+				else if((impression != 0) && ((double)clicks / impression) >= _ctr_threshold)
+					lst_private.push_back(tmp);
 			}
 
+			#pragma omp critical
+			lst.insert(lst.end(), lst_private.begin(), lst_private.end());
+			}
 			#ifdef DEBUG
-			std::cout << std::endl;
+			// End timer
+			end = std::chrono::system_clock::now();
+			std::cout << "Search complete! ";
+			elapsed_seconds = end - start;
+			std::cout << "Elapsed time: " << elapsed_seconds.count() << std::endl;
 			#endif
+
+			__gnu_parallel::sort(lst.begin(), lst.end());
 
 			return lst;
 		}
