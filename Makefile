@@ -9,13 +9,13 @@ OBJ_DIR := obj/
 BIN_DIR := bin/
 DAT_DIR := dat/
 
-# Setup CFLAGS for LOCAL/REMOTE differences
+# Setup CXXFLAGS for LOCAL/REMOTE differences
 ifeq ($(wildcard ./$(DAT_DIR)),)
-	CFLAGS = -DREMOTE
+	CXXFLAGS = -DREMOTE
 else
-	CFLAGS = -DLOCAL
+	CXXFLAGS = -DLOCAL
 endif
-override CFLAGS += -Wall -O3 -std=c++11
+override CXXFLAGS += -Wall -O3 -std=c++11 -fopenmp
 
 # Create directories if not exist
 $(OBJ_DIR):
@@ -79,17 +79,17 @@ all: build run
 build: $(BIN_DIR) $(OBJ_DIR) $(MAIN)
 	@echo "Compile complete."
 
-debug: CFLAGS += -DDEBUG
+debug: CXXFLAGS += -DDEBUG
 debug: build
 	@mv $(BIN_DIR)$(MAIN) $(BIN_DIR)$(MAIN)_debug
 
 $(MAIN): $(OBJ_FILES)
 	@echo "Linking all the object files..."
-	@$(CXX) $(CFLAGS) $(INCLUDES) -o $(BIN_DIR)$@ $^ $(LFLAGS)
+	@$(CXX) $(CXXFLAGS) $(INCLUDES) -o $(BIN_DIR)$@ $^ $(LFLAGS)
 
 $(OBJ_DIR)%.o: $(SRC_DIR)%.cpp
 	@echo "Compiling $<..." 
-	@$(CXX) $(CFLAGS) $(INCLUDES) -c -o $@ $<
+	@$(CXX) $(CXXFLAGS) $(INCLUDES) -c -o $@ $<
 # ====================
 
 

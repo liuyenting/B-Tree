@@ -11,6 +11,8 @@
 #include <sstream>
 
 // Includes mainly for class KDD
+#include <omp.h>
+#include <parallel/algorithm>
 #include <algorithm>
 #include <map>
 #include <list>
@@ -290,40 +292,30 @@ namespace dsa
 
 	class KDD
 	{
-	private:
-		static std::list<TData> _filter_by_user_id(Database& database, unsigned int _user_id)
-		{
-			// Search in database
-			auto range = database.map.equal_range(_user_id);
-
-			std::list<TData> lst;
-			for(auto it = range.first; it != range.second; ++it)
-				lst.push_back(it->second);
-
-			return lst;
-		}
-
 	//
 	// get()
 	//
 	private:
-		static std::list<Entry> _filter_by_user_id_wrapper(Database& database, unsigned int _user_id)
+		static std::vector<Entry> _filter_by_user_id_wrapper(Database& database, unsigned int _user_id)
 		{
 			// Reset the stream
 			database.stream.clear();
 
-			// Start conversion
-			std::list<Entry> lst;
-			for(const auto& elem : _filter_by_user_id(database, _user_id))
-			{
-				std::string buffer;
-				database.stream.seekg(elem, database.stream.beg);
-				std::getline(database.stream, buffer);
+			// Search in the database
+			auto range = database.map.equal_range(_user_id);
 
-				lst.push_back(Entry(buffer));
+			// Start conversion
+			std::string tmp;
+			std::vector<Entry> result;
+			for(auto it = range.first; it != range.second; ++it)
+			{
+				database.stream.seekg(it->second, database.stream.beg);
+				std::getline(database.stream, tmp);
+
+				result.push_back(Entry(tmp));
 			}
 
-			return lst;
+			return result;
 		}
 
 	public:
@@ -345,7 +337,7 @@ namespace dsa
 				}
 			}
 
-			return std::pair<unsigned int, unsigned long>(clicks, impression);
+			return std::make_pair(clicks, impression);
 		}
 
 	//
@@ -378,36 +370,44 @@ namespace dsa
 	    }
 
 	public:
-		static std::map<unsigned int, std::list<Entry> > impressed(Database& database,
+		static std::map<unsigned int, std::vector<Entry> > impressed(Database& database,
 																   unsigned int _user_id_1, unsigned int _user_id_2)
 		{
 			// Acquire the intersected ads between both users
-			std::list<Entry> user_1 = _filter_by_user_id_wrapper(database, _user_id_1);
+			std::vector<Entry> user_1 = _filter_by_user_id_wrapper(database, _user_id_1);
 			std::cout << "user_1 filtered" << std::endl;
-			std::list<Entry> user_2 = _filter_by_user_id_wrapper(database, _user_id_2);
+			std::vector<Entry> user_2 = _filter_by_user_id_wrapper(database, _user_id_2);
 			std::cout << "user_2 filtered" << std::endl;
-			std::list<Entry> intersection;
+			std::vector<Entry> intersection;
 			// Sort the list
-			user_1.sort(ad_id_list_comparer);
+			//user_1.sort(ad_id_list_comparer);
+			__gnu_parallel::sort(user_1.begin(), user_1.end(), ad_id_list_comparer);
 			std::cout << "user_1 sorted" << std::endl;
-			user_2.sort(ad_id_list_comparer);
+			//user_2.sort(ad_id_list_comparer);
+			__gnu_parallel::sort(user_2.begin(), user_2.end(), ad_id_list_comparer);
 			std::cout << "user_2 sorted" << std::endl;
 			// Find the intersected ads between user1 and user2
 			std::set_intersection(user_1.begin(), user_1.end(),
 								  user_2.begin(), user_2.end(),
 								  std::back_inserter(intersection),
-								  [](Entry const& lhs, Entry const& rhs) { return lhs.get_ad_id() < rhs.get_ad_id(); } );
+								  [](Entry const& lhs, Entry const& rhs) 
+								    { 
+								  		if(!lhs.hasImpression() || !rhs.hasImpression())
+								  	    	return false;
+								  	  	else
+								      		return lhs.get_ad_id() == rhs.get_ad_id(); 
+								    } );
 			std::cout << "intersection found" << std::endl;
 			// Refine the result for map
-			std::map<unsigned int, std::list<Entry> > map;
+			std::map<unsigned int, std::vector<Entry> > map;
 			for(const auto& elem : intersection)
 			{
-				// Append the property into list if exists
+				// Append the property into vector if exists
 				if(map.count(elem.get_ad_id()))
 					map[elem.get_ad_id()].push_back(elem);
 				else
 				{
-					std::list<Entry> tmp_lst;
+					std::vector<Entry> tmp_lst;
 					tmp_lst.push_back(elem);
 					map.insert(std::make_pair(elem.get_ad_id(), tmp_lst));
 				}
@@ -420,10 +420,52 @@ namespace dsa
 	// profit()
 	//	
 	public:
-		static std::list<TKey> profit(Database& database,
+		static std::vector<TKey> profit(Database& database,
 									  unsigned int _ad_id, double _ctr_threshold)
 		{
+			std::vector<TKey> lst;
 
+			for(BpTreeMap::iterator it = database.map.begin();
+				it != database.map.end(); 
+				it = database.map.upper_bound(it->first))
+			{
+				unsigned int clicks = 0;
+				unsigned long impression = 0;
+
+				TKey tmp = it->first;
+
+				#ifdef DEBUG
+				std::cout << "Testing user: " << tmp << std::endl;
+				#endif
+				for(const auto& elem : _filter_by_user_id_wrapper(database, tmp))
+				{
+					if(elem.get_ad_id() == _ad_id)
+					{
+						clicks += elem.get_click();
+						impression += elem.get_impression();
+					}
+				}
+				#ifdef DEBUG
+				std::cout << "CTR: " << ((double)clicks / impression) << std::endl << std::endl;
+				#endif
+
+				if((clicks == 0) && (impression == 0))
+				{
+					if(_ctr_threshold == 0)
+						lst.push_back(tmp);
+				}
+				else if(impression == 0)
+					continue;
+				else if(((double)clicks / impression) >= _ctr_threshold)
+					lst.push_back(tmp);
+
+			}
+
+			#ifdef DEBUG
+			std::cout << std::endl;
+			#endif
+
+			return lst;
 		}
 	};
 }

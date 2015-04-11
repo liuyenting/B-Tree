@@ -107,6 +107,8 @@ void profit(dsa::Database& database)
 	#endif
 
 	PRINT_SEPARATOR
+	for(const auto& elem : dsa::KDD::profit(database, a, ctr))
+		std::cout << elem << std::endl;
 	PRINT_SEPARATOR
 }
 
