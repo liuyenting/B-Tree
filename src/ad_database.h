@@ -281,8 +281,11 @@ namespace dsa
 						  "parse_field(): Designated template type isn't acceptable.");
 
 			FieldType result = 0;
+			#ifndef MMF
 			int ptr = 0;
+			#else
 			char c = mmf.getc();
+			#endif
 
 			#ifndef MMF
 			// Shift to desired field according to deliminator.
@@ -295,12 +298,14 @@ namespace dsa
 			}
 			#else
 			for(int idx = 0; idx < Field; c = mmf.getc())
-			{
+			{	
+				//std::cout << "c=" << c << ", idx=" << idx << std::endl;
 				if(c == delim)
 					idx++;
 				if(c == NEWLINE)
 					throw std::runtime_error("parse_field(): Field out of range.");
 			}
+			//std::cout << std::endl;
 			#endif
 
 			// Start extracting the number.
@@ -321,6 +326,9 @@ namespace dsa
 				result *= 10;
 				result += c - '0';
 			}
+
+			// Fast forward to end of the string
+			for( ; c != NEWLINE; c = mmf.getc());
 			#endif
 
 			return result;
@@ -566,16 +574,16 @@ namespace dsa
 			__gnu_parallel::sort(user_2.begin(), user_2.end(), ad_id_list_comparer);
 			std::cout << "user_2 sorted" << std::endl;
 			// Find the intersected ads between user1 and user2
-			std::set_intersection(user_1.begin(), user_1.end(),
-								  user_2.begin(), user_2.end(),
-								  std::back_inserter(intersection),
-								  [](Entry const& lhs, Entry const& rhs) 
-								    { 
-								  		if(!lhs.hasImpression() || !rhs.hasImpression())
-								  	    	return false;
-								  	  	else
-								      		return lhs.get_ad_id() == rhs.get_ad_id(); 
-								    } );
+			__gnu_parallel::set_intersection(user_1.begin(), user_1.end(),
+											 user_2.begin(), user_2.end(),
+											 std::back_inserter(intersection),
+											 [](Entry const& lhs, Entry const& rhs) 
+											    { 
+											  		if(!lhs.hasImpression() || !rhs.hasImpression())
+											  	    	return false;
+											  	  	else
+											      		return lhs.get_ad_id() == rhs.get_ad_id(); 
+											    } );
 			std::cout << "intersection found" << std::endl;
 			// Refine the result for map
 			std::map<unsigned int, std::vector<Entry> > map;
@@ -612,6 +620,7 @@ namespace dsa
 			// Start timer
 			start = std::chrono::system_clock::now();
 			#endif
+			/*
 			#pragma omp parallel
 			{
 				std::vector<TKey> lst_private;
@@ -636,21 +645,34 @@ namespace dsa
 							}
 						}
 					}
-
-					/*
-					if((clicks == 0) && (impression == 0))
-					{
-						if(_ctr_threshold == 0)
-							lst_private.push_back(tmp);
-					}
-					else if((impression != 0) && ((double)clicks / impression) >= _ctr_threshold)
-						lst_private.push_back(tmp);
-					*/
 				}
 
 				#pragma omp critical
 				lst.insert(lst.end(), lst_private.begin(), lst_private.end());
 			}
+			*/
+
+			// Search in the database
+			auto range = database.ad_id_map.equal_range(_ad_id);
+			
+			std::map<unsigned int, double> record;
+			for(auto it = range.first; it != range.second; ++it)
+			{
+				database.mmf.seekg(it->second);
+				Entry tmp(database.mmf.getline());
+
+				if(record.count(tmp.get_user_id()))
+					record[tmp.get_user_id()] += (double)tmp.get_click() / tmp.get_impression();
+				else
+					record.insert(std::make_pair(tmp.get_user_id(), (double)tmp.get_click() / tmp.get_impression()));
+			}
+
+			for(const auto& elem : record)
+			{
+				if(elem.second > _ctr_threshold)
+					lst.push_back(elem.first);
+			}
+
 			#ifdef DEBUG
 			// End timer
 			end = std::chrono::system_clock::now();
