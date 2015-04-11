@@ -307,13 +307,45 @@ namespace dsa
 			// Start conversion
 			std::string tmp;
 			std::vector<Entry> result;
+			
 			for(auto it = range.first; it != range.second; ++it)
 			{
 				database.stream.seekg(it->second, database.stream.beg);
 				std::getline(database.stream, tmp);
 
+				#pragma omp critical
 				result.push_back(Entry(tmp));
 			}
+			
+			/*
+			__gnu_parallel::for_each(range.first, range.second, 
+									 [&database, &tmp, &result](std::pair<TKey, TData> &it)
+									    { 
+									  		database.stream.seekg(it.second, database.stream.beg);
+											std::getline(database.stream, tmp);
+
+											#pragma omp critical
+											result.push_back(Entry(tmp));	
+									  	});
+			*/
+			/*
+			auto first = range.first;
+			#pragma omp parallel
+			{
+			    std::vector<Entry> result_private;
+			    #pragma omp for nowait
+			    for(auto it = first; it - first > 0; ++it)
+				{
+					database.stream.seekg(it->second, database.stream.beg);
+					std::getline(database.stream, tmp);
+
+					result_private.push_back(Entry(tmp));
+				}
+
+			    #pragma omp critical
+			    result.insert(result.end(), result_private.begin(), result_private.end());
+			}
+			*/
 
 			return result;
 		}
