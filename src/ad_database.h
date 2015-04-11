@@ -4,7 +4,18 @@
 // Includes mainly for class Database
 #include <stdexcept>
 #include <iostream>
+#ifndef MMF
 #include <fstream>
+#else
+// Includes especially for memory mapped files
+#include <unistd.h>
+#include <sys/mman.h>
+#include <cstdio>
+#include <cstdlib>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#endif
 #include <type_traits>
 
 // Includes mainly for class Entry
@@ -37,7 +48,11 @@
 namespace dsa
 {	
 	typedef unsigned int TKey;
+	#ifndef MMF
 	typedef std::streamoff TData;
+	#else
+	typedef size_t TData;
+	#endif
 
 	// Trait setup for the map
 	template <int _innerSlots, int _leafSlots>
@@ -65,6 +80,90 @@ namespace dsa
 		USER_ID 
 	};
 
+	#ifdef MMF
+	class MemoryMappedFile
+	{
+	private:
+		int fd = -1;
+		char* data = NULL;
+		size_t file_size;
+
+		// Offset in the memory mapped file
+		size_t off;
+
+	private:
+		// Support function for initialization
+		size_t get_file_size(const std::string& file_path)
+		{
+			struct stat st;
+			if(stat(file_path.c_str(), &st) != 0)
+				return 0;
+			return st.st_size;
+		}
+
+	public:
+		MemoryMappedFile()
+		{
+			off = 0;
+		}
+
+		void open(const std::string& file_path)
+		{
+			fd = fileno(fopen(file_path.c_str(), "r"));
+        	if(fd < 0)
+        		throw std::runtime_error("MMF(): Fail to open the file.");
+
+        	file_size = get_file_size(file_path);
+        	#ifdef DEBUG
+        	std::cout << "File size: " << file_size << std::endl;
+        	#endif
+
+        	// Map the file into memory
+        	data = reinterpret_cast<char*>(mmap((caddr_t)0, file_size, PROT_READ, MAP_PRIVATE, fd, 0));
+			if(data == MAP_FAILED)
+				throw std::runtime_error("MMF(): Fail to map the file into memory.");
+			#ifdef DEBUG
+			else
+				std::cout << "File mapped." << std::endl;
+			#endif
+		}
+
+	public:
+		// Stream support functions
+		bool eof() const
+		{
+			return (off == file_size);
+		}
+
+		TData tellg() const
+		{
+			return off;
+		}
+
+		void seekg(const TData& val)
+		{
+			off = val;
+		}
+
+		char& getc()
+		{
+			return data[off++];
+		}
+
+		char* getp()
+		{
+			return data + off;
+		}
+
+		std::string getline()
+		{
+			size_t length = 0;
+			for(size_t pos = off; data[pos] != NEWLINE; pos++, length++);
+			return std::string(getp(), length);
+		}
+	};
+	#endif
+
 	class Database
 	{
 	private:
@@ -73,29 +172,38 @@ namespace dsa
 	    std::chrono::time_point<std::chrono::system_clock> start, end;
         std::chrono::duration<double> elapsed_seconds;
         #endif
+        #ifndef MMF
         std::ifstream stream;
+        #else
+        MemoryMappedFile mmf;
+        #endif
         BpTreeMap map;
 
 	public:
 		Database(const std::string& file_path)
 		{
+			#ifndef MMF
 			stream.open(file_path, std::ifstream::in);
 			if(!stream.is_open())
 				throw std::runtime_error("Database(): Fail to open file.");
-
-			construct_tree(stream, map);
+			#else
+			mmf.open(file_path);
+			#endif
+			construct_tree();
 		}
 
 		~Database()
 		{
 		}
 
+		#ifndef MMF
 		std::ifstream& get_stream()
 		{
 			return stream;
 		}
+		#endif
 
-		void construct_tree(std::ifstream& stream, BpTreeMap& map)
+		void construct_tree()
 		{
 			std::string new_line;
 
@@ -104,8 +212,6 @@ namespace dsa
 			
 			// Counter for cycles
 			int counter = 0;
-
-			// Variable for timing
 			#endif
 
 			TData currentPos = 0;
@@ -113,17 +219,31 @@ namespace dsa
 			// Start timer
 			start = std::chrono::system_clock::now();
 			#endif
+			#ifndef MMF
 			while(!stream.eof())
+			#else
+			while(!mmf.eof())
+			#endif
 			{
 				// Get the position of current line
+				#ifndef MMF
 				currentPos = stream.tellg();
 				std::getline(stream, new_line);
+				#else
+				//std::cout << "Getting current fpos..." << std::endl;
+				currentPos = mmf.tellg();
+				//std::cout << "Current fpos: " << currentPos << std::endl;
+				#endif
 
+				#ifndef MMF
 				// Skip blank line
 				if(new_line.length() == 0)
 					continue;
 
 				map.insert(std::make_pair(parse_field<TKey, USER_ID>(new_line, DELIM), currentPos));
+				#else
+				map.insert(std::make_pair(parse_field<TKey, USER_ID>(mmf, DELIM), currentPos));
+				#endif
 
 				#ifdef DEBUG
 				counter++;
@@ -145,7 +265,11 @@ namespace dsa
 		}
 
 		template <typename FieldType, enum field Field>
+		#ifndef MMF
 		FieldType parse_field(std::string &str, const char& delim)
+		#else
+		FieldType parse_field(MemoryMappedFile& mmf, const char& delim)
+		#endif		
 		{
 			static_assert(std::is_same<FieldType, unsigned char>::value ||
 						  std::is_same<FieldType, unsigned short>::value ||
@@ -155,7 +279,9 @@ namespace dsa
 
 			FieldType result = 0;
 			int ptr = 0;
-			
+			char c = mmf.getc();
+
+			#ifndef MMF
 			// Shift to desired field according to deliminator.
 			for(int idx = 0; idx < Field; ptr++)
 			{
@@ -164,9 +290,19 @@ namespace dsa
 				if(str[ptr] == NEWLINE)
 					throw std::runtime_error("parse_field(): Field out of range.");
 			}
+			#else
+			for(int idx = 0; idx < Field; c = mmf.getc())
+			{
+				if(c == delim)
+					idx++;
+				if(c == NEWLINE)
+					throw std::runtime_error("parse_field(): Field out of range.");
+			}
+			#endif
 
 			// Start extracting the number.
 			// Stop when: deliminator, newline character, end-of-string, is found.
+			#ifndef MMF
 			for(; str[ptr] != delim && 
 				  str[ptr] != NEWLINE && 
 				  str[ptr] != '\0'; ptr++)
@@ -174,6 +310,15 @@ namespace dsa
 				result *= 10;
 				result += str[ptr] - '0';
 			}
+			#else
+			for(; c != delim && 
+				  c != NEWLINE && 
+				  c != '\0'; c = mmf.getc())
+			{
+				result *= 10;
+				result += c - '0';
+			}
+			#endif
 
 			return result;
 		}
@@ -298,8 +443,10 @@ namespace dsa
 	private:
 		static std::vector<Entry> _filter_by_user_id_wrapper(Database& database, unsigned int _user_id)
 		{
+			#ifndef MMF
 			// Reset the stream
 			database.stream.clear();
+			#endif
 
 			// Search in the database
 			auto range = database.map.equal_range(_user_id);
@@ -307,7 +454,7 @@ namespace dsa
 			// Start conversion
 			std::string tmp;
 			std::vector<Entry> result;
-			
+			/*
 			for(auto it = range.first; it != range.second; ++it)
 			{
 				database.stream.seekg(it->second, database.stream.beg);
@@ -316,7 +463,7 @@ namespace dsa
 				#pragma omp critical
 				result.push_back(Entry(tmp));
 			}
-			
+			*/
 			/*
 			__gnu_parallel::for_each(range.first, range.second, 
 									 [&database, &tmp, &result](std::pair<TKey, TData> &it)
@@ -328,24 +475,21 @@ namespace dsa
 											result.push_back(Entry(tmp));	
 									  	});
 			*/
-			/*
-			auto first = range.first;
+			
 			#pragma omp parallel
 			{
 			    std::vector<Entry> result_private;
-			    #pragma omp for nowait
-			    for(auto it = first; it - first > 0; ++it)
+			    for(auto it = range.first; it != range.second; ++it)
+				#pragma omp single nowait
 				{
-					database.stream.seekg(it->second, database.stream.beg);
-					std::getline(database.stream, tmp);
-
-					result_private.push_back(Entry(tmp));
+					database.mmf.seekg(it->second);
+					result_private.push_back(Entry(database.mmf.getline()));
 				}
 
 			    #pragma omp critical
 			    result.insert(result.end(), result_private.begin(), result_private.end());
 			}
-			*/
+			
 
 			return result;
 		}

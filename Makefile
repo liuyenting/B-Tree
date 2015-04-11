@@ -15,7 +15,7 @@ ifeq ($(wildcard ./$(DAT_DIR)),)
 else
 	CXXFLAGS = -DLOCAL
 endif
-override CXXFLAGS += -Wall -O3 -std=c++11 -fopenmp
+override CXXFLAGS += -Wall -O3 -std=c++11 -fopenmp -DMMF
 
 # Create directories if not exist
 $(OBJ_DIR):
