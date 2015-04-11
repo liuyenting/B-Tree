@@ -43,7 +43,8 @@
 
 // Performance parameters
 #define SLOTS 				128
-#define BIN_THRESHOLD 		256*1024*1024
+//#define BIN_THRESHOLD 		256*1024*1024
+#define BIN_THRESHOLD 		1024
 
 namespace dsa
 {	
@@ -177,7 +178,7 @@ namespace dsa
         #else
         MemoryMappedFile mmf;
         #endif
-        BpTreeMap map;
+        BpTreeMap map, ad_id_map;
 
 	public:
 		Database(const std::string& file_path)
@@ -243,6 +244,8 @@ namespace dsa
 				map.insert(std::make_pair(parse_field<TKey, USER_ID>(new_line, DELIM), currentPos));
 				#else
 				map.insert(std::make_pair(parse_field<TKey, USER_ID>(mmf, DELIM), currentPos));
+				mmf.seekg(currentPos);
+				ad_id_map.insert(std::make_pair(parse_field<TKey, AD_ID>(mmf, DELIM), currentPos));
 				#endif
 
 				#ifdef DEBUG
@@ -399,6 +402,7 @@ namespace dsa
 		}
 
 	public:
+		// TODO: Direct extraction
 		Entry(const std::string& entry)
 		{
 			std::istringstream iss(entry);
@@ -610,37 +614,42 @@ namespace dsa
 			#endif
 			#pragma omp parallel
 			{
-			std::vector<TKey> lst_private;
-			for(BpTreeMap::iterator it = database.map.begin();
-				it != database.map.end(); 
-				it = database.map.upper_bound(it->first))
-			#pragma omp single nowait
-			{
-				unsigned int clicks = 0;
-				unsigned long impression = 0;
-
-				TKey tmp = it->first;
-
-				for(const auto& elem : _filter_by_user_id_wrapper(database, tmp))
+				std::vector<TKey> lst_private;
+				for(BpTreeMap::iterator it = database.map.begin();
+					it != database.map.end(); 
+					it = database.map.upper_bound(it->first))
+				#pragma omp single nowait
 				{
-					if(elem.get_ad_id() == _ad_id)
+					double ctr = 0.0;
+
+					TKey tmp = it->first;
+
+					for(const auto& elem : _filter_by_user_id_wrapper(database, tmp))
 					{
-						clicks += elem.get_click();
-						impression += elem.get_impression();
+						if(elem.get_ad_id() == _ad_id)
+						{
+							ctr += (double)elem.get_click() / elem.get_impression();
+							if(ctr >= _ctr_threshold)
+							{
+								lst_private.push_back(tmp);
+								break;
+							}
+						}
 					}
-				}
 
-				if((clicks == 0) && (impression == 0))
-				{
-					if(_ctr_threshold == 0)
+					/*
+					if((clicks == 0) && (impression == 0))
+					{
+						if(_ctr_threshold == 0)
+							lst_private.push_back(tmp);
+					}
+					else if((impression != 0) && ((double)clicks / impression) >= _ctr_threshold)
 						lst_private.push_back(tmp);
+					*/
 				}
-				else if((impression != 0) && ((double)clicks / impression) >= _ctr_threshold)
-					lst_private.push_back(tmp);
-			}
 
-			#pragma omp critical
-			lst.insert(lst.end(), lst_private.begin(), lst_private.end());
+				#pragma omp critical
+				lst.insert(lst.end(), lst_private.begin(), lst_private.end());
 			}
 			#ifdef DEBUG
 			// End timer
