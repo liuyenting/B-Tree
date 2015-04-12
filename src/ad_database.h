@@ -464,30 +464,8 @@ namespace dsa
 			auto range = database.map.equal_range(_user_id);
 
 			// Start conversion
-			std::string tmp;
 			std::vector<Entry> result;
-			/*
-			for(auto it = range.first; it != range.second; ++it)
-			{
-				database.stream.seekg(it->second, database.stream.beg);
-				std::getline(database.stream, tmp);
 
-				#pragma omp critical
-				result.push_back(Entry(tmp));
-			}
-			*/
-			/*
-			__gnu_parallel::for_each(range.first, range.second, 
-									 [&database, &tmp, &result](std::pair<TKey, TData> &it)
-									    { 
-									  		database.stream.seekg(it.second, database.stream.beg);
-											std::getline(database.stream, tmp);
-
-											#pragma omp critical
-											result.push_back(Entry(tmp));	
-									  	});
-			*/
-			
 			#pragma omp parallel
 			{
 			    std::vector<Entry> result_private;
@@ -531,20 +509,20 @@ namespace dsa
 	// clicked()
 	//
 	public:
-		static std::list<std::pair<unsigned int, unsigned int> > clicked(Database& database, unsigned int _user_id)
+		static std::vector<std::pair<unsigned int, unsigned int> > clicked(Database& database, unsigned int _user_id)
 		{
-			std::list<std::pair<unsigned int, unsigned int> > lst;
+			std::vector<std::pair<unsigned int, unsigned int> > result;
 			for(const auto& elem : _filter_by_user_id_wrapper(database, _user_id))
 			{
 				if(elem.hasClicked())
-					lst.push_back(std::make_pair(elem.get_ad_id(), elem.get_query_id()));
+					result.push_back(std::make_pair(elem.get_ad_id(), elem.get_query_id()));
 			}
 
 			// Sort in ascending mode and then remove duplicate entries.
-			lst.sort();
-			lst.unique();
-
-			return lst;
+			__gnu_parallel::sort(result.begin(), result.end());
+			result.erase(std::unique(result.begin(), result.end()), result.end());
+			
+			return result;
 		}
 
 	//
@@ -562,33 +540,82 @@ namespace dsa
 		{
 			// Acquire the intersected ads between both users
 			std::vector<Entry> user_1 = _filter_by_user_id_wrapper(database, _user_id_1);
+			#ifdef DEBUG
 			std::cout << "user_1 filtered" << std::endl;
+			#endif
 			std::vector<Entry> user_2 = _filter_by_user_id_wrapper(database, _user_id_2);
+			#ifdef DEBUG
 			std::cout << "user_2 filtered" << std::endl;
+			#endif
 			std::vector<Entry> intersection;
 			// Sort the list
 			//user_1.sort(ad_id_list_comparer);
+			/*
 			__gnu_parallel::sort(user_1.begin(), user_1.end(), ad_id_list_comparer);
 			std::cout << "user_1 sorted" << std::endl;
 			//user_2.sort(ad_id_list_comparer);
 			__gnu_parallel::sort(user_2.begin(), user_2.end(), ad_id_list_comparer);
 			std::cout << "user_2 sorted" << std::endl;
+			*/
 			// Find the intersected ads between user1 and user2
-			__gnu_parallel::set_intersection(user_1.begin(), user_1.end(),
-											 user_2.begin(), user_2.end(),
-											 std::back_inserter(intersection),
-											 [](Entry const& lhs, Entry const& rhs) 
-											    { 
-											  		if(!lhs.hasImpression() || !rhs.hasImpression())
-											  	    	return false;
-											  	  	else
-											      		return lhs.get_ad_id() == rhs.get_ad_id(); 
-											    } );
+			#pragma omp parallel 
+			{
+				std::vector<Entry> intersection_private;
+				
+				for(auto a = user_1.begin(); a != user_1.end(); ++a)
+				#pragma omp single nowait
+				{
+					for(auto b = user_2.begin(); b != user_2.end(); ++b)
+					{
+						if(a->hasImpression() || b->hasImpression())
+						{
+							if(a->get_ad_id() == b->get_ad_id())
+							{
+								intersection_private.push_back(*a);
+								if((a->get_advertiser_id() != b->get_advertiser_id()) ||
+								   (a->get_keyword_id() != b->get_keyword_id()) ||
+								   (a->get_title_id() != b->get_title_id()) ||
+								   (a->get_description_id() != b->get_description_id()))
+								{
+									intersection_private.push_back(*b);
+								}
+							}
+						}
+					}
+				}
+
+				#pragma omp critical
+			    intersection.insert(intersection.end(), intersection_private.begin(), intersection_private.end());
+			}
+			
+			__gnu_parallel::sort(intersection.begin(), intersection.end(), 
+								 [](const Entry&lhs, const Entry& rhs)
+								 	{
+								 		if(lhs.get_advertiser_id() != rhs.get_advertiser_id())
+								 			return lhs.get_advertiser_id() > rhs.get_advertiser_id();
+								 		else if(lhs.get_keyword_id() != rhs.get_keyword_id())
+								 			return lhs.get_keyword_id() > rhs.get_keyword_id();
+								 		else if(lhs.get_title_id() != rhs.get_title_id())
+								 			return lhs.get_title_id() > rhs.get_title_id();
+								 		else
+								 			return lhs.get_description_id() > rhs.get_description_id();
+								 	});
+			intersection.erase(std::unique(intersection.begin(), intersection.end(),
+										   [](const Entry& lhs, const Entry& rhs)
+										   	{
+										   		return (lhs.get_advertiser_id() == rhs.get_advertiser_id()) &&
+										   			   (lhs.get_keyword_id() == rhs.get_keyword_id()) &&
+										   			   (lhs.get_title_id() == rhs.get_title_id()) &&
+										   			   (lhs.get_description_id() == rhs.get_description_id());
+										    }), intersection.end());
+			
 			std::cout << "intersection found" << std::endl;
+			std::cout << std::endl;
 			// Refine the result for map
 			std::map<unsigned int, std::vector<Entry> > map;
 			for(const auto& elem : intersection)
 			{
+
 				// Append the property into vector if exists
 				if(map.count(elem.get_ad_id()))
 					map[elem.get_ad_id()].push_back(elem);

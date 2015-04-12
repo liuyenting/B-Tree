@@ -9,8 +9,8 @@
 #ifdef REMOTE
 #define FILE_PATH "/tmp2/KDDCup2012/track2/kddcup2012track2.txt"
 #elif LOCAL
-#define FILE_PATH "./dat/kddcup2012track2.txt"
-//#define FILE_PATH "./dat/demotrack.txt"
+//#define FILE_PATH "./dat/kddcup2012track2.txt"
+#define FILE_PATH "./dat/demotrack.txt"
 #else
 #define MANUAL_FILE_PATH
 #endif
@@ -76,7 +76,12 @@ void impressed(dsa::Database& database)
 	PRINT_SEPARATOR
 	for(const auto& elem : dsa::KDD::impressed(database, u1, u2))
 	{
-		std::cout << elem.first << std::endl;
+		std::cout << elem.first;
+		#ifdef DEBUG
+		std::cout << ", vector size=" << elem.second.size();
+		#endif
+		std::cout << std::endl;
+
 		for(const auto& prop : elem.second)
 		{
 			std::cout << '\t'
