@@ -4,6 +4,15 @@
 
 #include <map>
 
+#if defined(DEBUG) || defined(BENCHMARK)
+// Benchmark
+#include <chrono>
+
+// Variable for timing
+std::chrono::time_point<std::chrono::system_clock> start, end;
+std::chrono::duration<double> elapsed_seconds;
+#endif
+
 #include "ad_database.h"
 
 #ifdef REMOTE
@@ -129,7 +138,10 @@ void setup_function_lut(std::map<std::string, FuncPtr>& map)
 }
 
 int main(int argc, char* argv[])
-{
+{	
+	#if defined(DEBUG) || defined(BENCHMARK)
+	start = std::chrono::system_clock::now();
+	#endif
 	#ifndef MANUAL_FILE_PATH
 	dsa::Database database(FILE_PATH);
 	#else
@@ -146,6 +158,12 @@ int main(int argc, char* argv[])
 	{
 		std::cerr << "Caught a runtime_error exception: " << e.what () << std::endl;
 	}
+	#endif
+	#if defined(DEBUG) || defined(BENCHMARK)
+	// End timer
+	end = std::chrono::system_clock::now();
+	elapsed_seconds = end - start;
+	std::cout << "database, elapsed time: " << elapsed_seconds.count() << std::endl;
 	#endif
 
 	// Setup instruction look-up table
@@ -164,7 +182,17 @@ int main(int argc, char* argv[])
 		{
 			try
 			{
+				#if defined(DEBUG) || defined(BENCHMARK)
+				// Start timer
+				start = std::chrono::system_clock::now();
+				#endif
 				(elem->second)(database);
+				#if defined(DEBUG) || defined(BENCHMARK)
+				// End timer
+				end = std::chrono::system_clock::now();
+				elapsed_seconds = end - start;
+				std::cout << instruction << ", elapsed time: " << elapsed_seconds.count() << std::endl;
+				#endif
 			}
 			catch(std::runtime_error &e)
 			{

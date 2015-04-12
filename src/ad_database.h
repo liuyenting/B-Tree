@@ -36,7 +36,6 @@
 
 // Debug paramters
 #ifdef DEBUG
-#include <chrono>
 #define NOTICE_PER_LINE		1000000
 //#define PAUSE_AT_RATIO	10
 #endif
@@ -168,11 +167,6 @@ namespace dsa
 	class Database
 	{
 	private:
-		#ifdef DEBUG
-		// Variable for timing
-	    std::chrono::time_point<std::chrono::system_clock> start, end;
-        std::chrono::duration<double> elapsed_seconds;
-        #endif
         #ifndef MMF
         std::ifstream stream;
         #else
@@ -206,21 +200,16 @@ namespace dsa
 
 		void construct_tree()
 		{
-			std::string new_line;
 
 			#ifdef DEBUG
 			std::cout << "Start constructing tree..." << std::endl;
-			
 			// Counter for cycles
 			int counter = 0;
 			#endif
 
 			TData currentPos = 0;
-			#ifdef DEBUG
-			// Start timer
-			start = std::chrono::system_clock::now();
-			#endif
 			#ifndef MMF
+			std::string new_line;
 			while(!stream.eof())
 			#else
 			while(!mmf.eof())
@@ -259,11 +248,7 @@ namespace dsa
 				#endif
 			}
 			#ifdef DEBUG
-			// End timer
-			end = std::chrono::system_clock::now();
-			std::cout << "Insertion complete! ";
-			elapsed_seconds = end - start;
-			std::cout << "Elapsed time: " << elapsed_seconds.count() << std::endl;
+			std::cout << "... Complete!" << std::endl;
 			#endif
 		}
 
@@ -541,11 +526,11 @@ namespace dsa
 			// Acquire the intersected ads between both users
 			std::vector<Entry> user_1 = _filter_by_user_id_wrapper(database, _user_id_1);
 			#ifdef DEBUG
-			std::cout << "user_1 filtered" << std::endl;
+			std::cout << "User 1 filtered" << std::endl;
 			#endif
 			std::vector<Entry> user_2 = _filter_by_user_id_wrapper(database, _user_id_2);
 			#ifdef DEBUG
-			std::cout << "user_2 filtered" << std::endl;
+			std::cout << "User 2 filtered" << std::endl;
 			#endif
 			std::vector<Entry> intersection;
 			// Sort the list
@@ -592,13 +577,13 @@ namespace dsa
 								 [](const Entry&lhs, const Entry& rhs)
 								 	{
 								 		if(lhs.get_advertiser_id() != rhs.get_advertiser_id())
-								 			return lhs.get_advertiser_id() > rhs.get_advertiser_id();
+								 			return lhs.get_advertiser_id() < rhs.get_advertiser_id();
 								 		else if(lhs.get_keyword_id() != rhs.get_keyword_id())
-								 			return lhs.get_keyword_id() > rhs.get_keyword_id();
+								 			return lhs.get_keyword_id() < rhs.get_keyword_id();
 								 		else if(lhs.get_title_id() != rhs.get_title_id())
-								 			return lhs.get_title_id() > rhs.get_title_id();
+								 			return lhs.get_title_id() < rhs.get_title_id();
 								 		else
-								 			return lhs.get_description_id() > rhs.get_description_id();
+								 			return lhs.get_description_id() < rhs.get_description_id();
 								 	});
 			intersection.erase(std::unique(intersection.begin(), intersection.end(),
 										   [](const Entry& lhs, const Entry& rhs)
@@ -608,9 +593,10 @@ namespace dsa
 										   			   (lhs.get_title_id() == rhs.get_title_id()) &&
 										   			   (lhs.get_description_id() == rhs.get_description_id());
 										    }), intersection.end());
-			
-			std::cout << "intersection found" << std::endl;
-			std::cout << std::endl;
+			#ifdef DEBUG
+			std::cout << "Intersections between u1 and u2 found." << std::endl << std::endl;
+			#endif
+
 			// Refine the result for map
 			std::map<unsigned int, std::vector<Entry> > map;
 			for(const auto& elem : intersection)
@@ -639,14 +625,6 @@ namespace dsa
 		{
 			std::vector<TKey> lst;
 
-			#ifdef DEBUG
-			// Variable for timing
-		    std::chrono::time_point<std::chrono::system_clock> start, end;
-	        std::chrono::duration<double> elapsed_seconds;
-
-			// Start timer
-			start = std::chrono::system_clock::now();
-			#endif
 			/*
 			#pragma omp parallel
 			{
@@ -699,14 +677,6 @@ namespace dsa
 				if(elem.second > _ctr_threshold)
 					lst.push_back(elem.first);
 			}
-
-			#ifdef DEBUG
-			// End timer
-			end = std::chrono::system_clock::now();
-			std::cout << "Search complete! ";
-			elapsed_seconds = end - start;
-			std::cout << "Elapsed time: " << elapsed_seconds.count() << std::endl;
-			#endif
 
 			__gnu_parallel::sort(lst.begin(), lst.end());
 

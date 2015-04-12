@@ -56,6 +56,7 @@ help:
 	@echo
 	@echo "build\t\tBuild the project from '$(SRC_DIR)'."
 	@echo "debug\t\tBuild the project with debug flag being set."
+	@echo "benchmark\tBenchmark each command for the project."
 	@echo "run\t\tRun the binary locally."
 	@echo "clean\t\tWipe out all the object files and binaries."
 	@echo
@@ -83,6 +84,10 @@ debug: CXXFLAGS += -DDEBUG
 debug: build
 	@mv $(BIN_DIR)$(MAIN) $(BIN_DIR)$(MAIN)_debug
 
+benchmark: CXXFLAGS += -DBENCHMARK
+benchmark: build
+	@mv $(BIN_DIR)$(MAIN) $(BIN_DIR)$(MAIN)_benchmark
+
 $(MAIN): $(OBJ_FILES)
 	@echo "Linking all the object files..."
 	@$(CXX) $(CXXFLAGS) $(INCLUDES) -o $(BIN_DIR)$@ $^ $(LFLAGS)
@@ -106,6 +111,9 @@ remote_build: remote
 remote_debug: COMMAND = make debug
 remote_debug: remote
 
+remote_benchmark: COMMAND = make benchmark
+remote_benchmark: remote
+
 remote_run: COMMAND = make run
 remote_run: remote
 
@@ -125,8 +133,10 @@ ifneq ($(wildcard $(BIN_DIR)$(MAIN)),)
 	@./$(BIN_DIR)$(MAIN)
 else ifneq ($(wildcard $(BIN_DIR)$(MAIN)_debug),)
 	@./$(BIN_DIR)$(MAIN)_debug
+else ifneq ($(wildcard $(BIN_DIR)$(MAIN)_benchmark),)
+	@./$(BIN_DIR)$(MAIN)_benchmark
 else
-	@echo "Please execute 'make all' or 'make debug' first."
+	@echo "Please execute 'make all', 'make build', 'make debug' or 'make benchmark' first."
 endif
 
 clean:
