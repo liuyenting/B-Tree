@@ -26,7 +26,7 @@ std::chrono::duration<double> elapsed_seconds;
 
 #define PRINT_SEPARATOR std::cout << "********************" << std::endl;
 
-void get(dsa::Database& database)
+bool get(dsa::Database& database)
 {
 	#ifdef DEBUG
 	std::cout << "get() called." << std::endl;
@@ -48,9 +48,11 @@ void get(dsa::Database& database)
 	std::pair<unsigned int, unsigned long> result = dsa::KDD::get(database, u, a, q, p, d);
 	std::cout << result.first << " " << result.second << std::endl;
 	PRINT_SEPARATOR
+
+	return false;
 }
 
-void clicked(dsa::Database& database)
+bool clicked(dsa::Database& database)
 {
 	#ifdef DEBUG
 	std::cout << "clicked() called." << std::endl;
@@ -66,9 +68,11 @@ void clicked(dsa::Database& database)
 	for(const auto& elem : dsa::KDD::clicked(database, u))
 		std::cout << elem.first << " " << elem.second << std::endl;
 	PRINT_SEPARATOR
+
+	return false;
 }
 
-void impressed(dsa::Database& database)
+bool impressed(dsa::Database& database)
 {
 	#ifdef DEBUG
 	std::cout << "impressed() called." << std::endl;
@@ -103,9 +107,11 @@ void impressed(dsa::Database& database)
 		}
 	}
 	PRINT_SEPARATOR
+
+	return false;
 }
 
-void profit(dsa::Database& database)
+bool profit(dsa::Database& database)
 {
 	#ifdef DEBUG
 	std::cout << "profit() called." << std::endl;
@@ -124,9 +130,17 @@ void profit(dsa::Database& database)
 	for(const auto& elem : dsa::KDD::profit(database, a, ctr))
 		std::cout << elem << std::endl;
 	PRINT_SEPARATOR
+
+	return false;
 }
 
-typedef void (*FuncPtr)(dsa::Database&);
+bool quit(dsa::Database& database)
+{
+	std::cout << "# leave the program" << std::endl;
+	return true;
+}
+
+typedef bool (*FuncPtr)(dsa::Database&);
 typedef std::map<std::string, FuncPtr> InstrMap;
 
 void setup_function_lut(std::map<std::string, FuncPtr>& map)
@@ -135,6 +149,7 @@ void setup_function_lut(std::map<std::string, FuncPtr>& map)
 	map["clicked"] = clicked;
 	map["impressed"] = impressed;
 	map["profit"] = profit;
+	map["quit"] = quit;
 }
 
 int main(int argc, char* argv[])
@@ -186,7 +201,7 @@ int main(int argc, char* argv[])
 				// Start timer
 				start = std::chrono::system_clock::now();
 				#endif
-				(elem->second)(database);
+				quit = (elem->second)(database);
 				#if defined(DEBUG) || defined(BENCHMARK)
 				// End timer
 				end = std::chrono::system_clock::now();

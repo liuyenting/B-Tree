@@ -36,7 +36,7 @@ MAIN = dsa_hw2-4
 # Workstation setup
 KEY_FILE = key/csie_workstation
 ACCOUNT = b03902036
-SERVER = linux3.csie.ntu.edu.tw
+SERVER = linux1.csie.ntu.edu.tw
 
 # Remote command
 REMOTE_BASE_DIR = ~/DSA

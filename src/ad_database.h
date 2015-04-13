@@ -107,6 +107,13 @@ namespace dsa
 			off = 0;
 		}
 
+		~MemoryMappedFile()
+		{
+			if(munmap(data, file_size) == -1)
+		        throw "main(): Fail to un-mapping the file.";
+		    close(fd);
+		}
+
 		void open(const std::string& file_path)
 		{
 			fd = fileno(fopen(file_path.c_str(), "r"));
@@ -173,6 +180,9 @@ namespace dsa
         MemoryMappedFile mmf;
         #endif
         BpTreeMap map, ad_id_map;
+        stx::btree_multimap<TKey, TKey, 
+							std::less<TKey>, 
+							struct btree_traits_speed<SLOTS, SLOTS> > user_id_ad_id_map;
 
 	public:
 		Database(const std::string& file_path)
@@ -232,9 +242,13 @@ namespace dsa
 
 				map.insert(std::make_pair(parse_field<TKey, USER_ID>(new_line, DELIM), currentPos));
 				#else
-				map.insert(std::make_pair(parse_field<TKey, USER_ID>(mmf, DELIM), currentPos));
+				auto user = parse_field<TKey, USER_ID>(mmf, DELIM);
 				mmf.seekg(currentPos);
-				ad_id_map.insert(std::make_pair(parse_field<TKey, AD_ID>(mmf, DELIM), currentPos));
+				auto ad = parse_field<TKey, AD_ID>(mmf, DELIM);
+				
+				map.insert(std::make_pair(user, currentPos));
+				ad_id_map.insert(std::make_pair(ad, currentPos));
+				user_id_ad_id_map.insert(std::make_pair(user, ad));
 				#endif
 
 				#ifdef DEBUG
@@ -395,6 +409,10 @@ namespace dsa
 		}
 
 	public:
+		Entry()
+		{
+		}
+
 		// TODO: Direct extraction
 		Entry(const std::string& entry)
 		{
@@ -445,12 +463,31 @@ namespace dsa
 			database.stream.clear();
 			#endif
 
+			std::cout << "filter_wrapper_start" << std::endl;
 			// Search in the database
 			auto range = database.map.equal_range(_user_id);
+			std::cout << "filter_wrapper_end" << std::endl;
+
+			std::cout << "start exp list" << std::endl;
+			std::vector<TData> list;
+			for(auto it = range.first; it != range.second; ++it)
+				list.push_back(it->second);
+			std::cout << "end exp list" << std::endl;
+
 
 			// Start conversion
-			std::vector<Entry> result;
+			/*
+			int size = list.size();
+			std::vector<Entry> result(size);
+			#pragma omp parallel for shared(result, database, list)
+			for(int idx = 0; idx < size; ++idx) 
+			{
+			    database.mmf.seekg(list[idx]);
+				result[idx] = Entry(database.mmf.getline());
+			}
+			*/
 
+			std::vector<Entry> result;
 			#pragma omp parallel
 			{
 			    std::vector<Entry> result_private;
@@ -465,6 +502,16 @@ namespace dsa
 			    result.insert(result.end(), result_private.begin(), result_private.end());
 			}
 			
+			/*
+			__gnu_parallel::for_each(range.first, range.second, 
+									 [&result, &database](std::pair<TKey, TData>& elem)
+									 {
+										database.mmf.seekg(elem.second);
+										//#pragma omp critical
+										result.push_back(Entry(database.mmf.getline()));
+									 });
+			*/
+
 			return result;
 		}
 
@@ -519,10 +566,123 @@ namespace dsa
 	    	return lhs.get_ad_id() < rhs.get_ad_id();
 	    }
 
+		template <typename Pair>
+		struct Equal : public std::binary_function<Pair, Pair, bool>
+		{
+		    bool operator()(const Pair &x, const Pair &y) const
+		    {
+		        return x.first == y.first;
+		    }
+		};
+
 	public:
 		static std::map<unsigned int, std::vector<Entry> > impressed(Database& database,
 																   unsigned int _user_id_1, unsigned int _user_id_2)
 		{
+			// Dummy map
+			std::map<unsigned int, std::vector<Entry> > result;
+
+			#ifdef DEBUG
+			std::cout << "start searching ads viewed by user 1...";
+			#endif
+			// Search the ad from user 1
+			auto range1 = database.user_id_ad_id_map.equal_range(_user_id_1);
+			std::vector<TKey> user_1_ad_list;
+			for(auto it = range1.first; it != range1.second; it++)
+				user_1_ad_list.push_back(it->second);
+			__gnu_parallel::sort(user_1_ad_list.begin(), user_1_ad_list.end());
+			#ifdef DEBUG
+			std::cout << "complete" << std::endl;
+			#endif
+
+			#ifdef DEBUG
+			std::cout << "start searching ads viewed by user 2...";
+			#endif
+			// Search the ad from user 2
+			auto range2 = database.user_id_ad_id_map.equal_range(_user_id_2);
+			std::vector<TKey> user_2_ad_list;
+			for(auto it = range2.first; it != range2.second; it++)
+				user_2_ad_list.push_back(it->second);
+			__gnu_parallel::sort(user_2_ad_list.begin(), user_2_ad_list.end());
+			#ifdef DEBUG
+			std::cout << "complete" << std::endl;
+			#endif
+
+			#ifdef DEBUG
+			std::cout << "start finding intersected ads between both users...";
+			#endif
+			// Find the intersected ads between user 1 and user 2
+			std::vector<TKey> intersected_ads;
+			__gnu_parallel::set_intersection(user_1_ad_list.begin(), user_1_ad_list.end(),
+                          					 user_2_ad_list.begin(), user_2_ad_list.end(),
+                          					 std::back_inserter(intersected_ads));
+			intersected_ads.erase(std::unique(intersected_ads.begin(), intersected_ads.end()), intersected_ads.end());
+			#ifdef DEBUG
+			std::cout << "complete" << std::endl;
+			#endif
+
+			#ifdef DEBUG
+			std::cout << "start searching for properties..." << std::endl;
+			#endif
+			for(const auto& elem : intersected_ads)
+			{
+				std::vector<Entry> tmp_vec;
+
+				auto range = database.ad_id_map.equal_range(elem);
+				for(auto it = range.first; it != range.second; ++it)
+				{
+					database.mmf.seekg(it->second);
+					Entry tmp(database.mmf.getline());
+
+					if((tmp.get_user_id() == _user_id_1) || (tmp.get_user_id() == _user_id_2))
+					{
+						if(tmp.hasImpression())
+							tmp_vec.push_back(tmp);
+					}
+				}
+
+				// Sort and remove duplicate entries
+				__gnu_parallel::sort(tmp_vec.begin(), tmp_vec.end(), 
+									 [](const Entry&lhs, const Entry& rhs)
+									 	{
+									 		if(lhs.get_advertiser_id() != rhs.get_advertiser_id())
+									 			return lhs.get_advertiser_id() < rhs.get_advertiser_id();
+									 		else if(lhs.get_keyword_id() != rhs.get_keyword_id())
+									 			return lhs.get_keyword_id() < rhs.get_keyword_id();
+									 		else if(lhs.get_title_id() != rhs.get_title_id())
+									 			return lhs.get_title_id() < rhs.get_title_id();
+									 		else
+									 			return lhs.get_description_id() < rhs.get_description_id();
+									 	});
+				tmp_vec.erase(std::unique(tmp_vec.begin(), tmp_vec.end(),
+										   [](const Entry& lhs, const Entry& rhs)
+										   	{
+										   		return (lhs.get_advertiser_id() == rhs.get_advertiser_id()) &&
+										   			   (lhs.get_keyword_id() == rhs.get_keyword_id()) &&
+										   			   (lhs.get_title_id() == rhs.get_title_id()) &&
+										   			   (lhs.get_description_id() == rhs.get_description_id());
+										    }), tmp_vec.end());
+
+				result[elem] = tmp_vec;
+			}
+			#ifdef DEBUG
+			std::cout << "...complete" << std::endl;
+			#endif
+			
+			// Start conversion
+			/*
+			int size = list.size();
+			std::vector<Entry> result(size);
+			#pragma omp parallel for shared(result, database, list)
+			for(int idx = 0; idx < size; ++idx) 
+			{
+			    database.mmf.seekg(list[idx]);
+				result[idx] = Entry(database.mmf.getline());
+			}
+			*/
+
+
+			/*
 			// Acquire the intersected ads between both users
 			std::vector<Entry> user_1 = _filter_by_user_id_wrapper(database, _user_id_1);
 			#ifdef DEBUG
@@ -533,6 +693,8 @@ namespace dsa
 			std::cout << "User 2 filtered" << std::endl;
 			#endif
 			std::vector<Entry> intersection;
+			*/
+
 			// Sort the list
 			//user_1.sort(ad_id_list_comparer);
 			/*
@@ -543,6 +705,8 @@ namespace dsa
 			std::cout << "user_2 sorted" << std::endl;
 			*/
 			// Find the intersected ads between user1 and user2
+
+			/*
 			#pragma omp parallel 
 			{
 				std::vector<Entry> intersection_private;
@@ -612,8 +776,9 @@ namespace dsa
 					map.insert(std::make_pair(elem.get_ad_id(), tmp_lst));
 				}
 			}
-
-			return map;
+			*/
+			
+			return result;
 		}
 
 	//
