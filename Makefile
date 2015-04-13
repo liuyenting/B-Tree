@@ -32,11 +32,12 @@ OBJ_FILES := $(addprefix $(OBJ_DIR),$(notdir $(SRC_FILES:.cpp=.o)))
 
 # Main executable
 MAIN = dsa_hw2-4
+FINAL_MAIN = demo
 
 # Workstation setup
 KEY_FILE = key/csie_workstation
 ACCOUNT = b03902036
-SERVER = linux1.csie.ntu.edu.tw
+SERVER = linux12.csie.ntu.edu.tw
 
 # Remote command
 REMOTE_BASE_DIR = ~/DSA
@@ -75,7 +76,13 @@ help:
 # ====================
 # Compile related
 # ====================
-all: build run
+all: CXXFLAGS = -Wall -O3 -std=c++11 -fopenmp -DMMF
+all: clean build
+all:
+	@echo "Copy the binary to root..."
+	@cp $(BIN_DIR)$(MAIN) .
+	@echo "Rename as the spec requested."
+	@mv $(MAIN) $(FINAL_MAIN)
 
 build: $(BIN_DIR) $(OBJ_DIR) $(MAIN)
 	@echo "Compile complete."
@@ -144,4 +151,6 @@ clean:
 	@echo "'$(OBJ_DIR)' wiped..."
 	@rm -rf $(BIN_DIR)
 	@echo "'$(BIN_DIR)' wiped..."
+	@rm -rf $(FINAL_MAIN)
+	@echo "Removed all the binaries under root folder."
 # ====================

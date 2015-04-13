@@ -157,66 +157,67 @@ int main(int argc, char* argv[])
 	#if defined(DEBUG) || defined(BENCHMARK)
 	start = std::chrono::system_clock::now();
 	#endif
-	#ifndef MANUAL_FILE_PATH
-	dsa::Database database(FILE_PATH);
-	#else
 	try
 	{
+		#ifndef MANUAL_FILE_PATH
+		dsa::Database database(FILE_PATH);
+		#else
 		if(argc < 2)
 			throw std::runtime_error("main(): Too few argument.");
 		else if(argc > 2)
 			throw std::runtime_error("main(): Program only take one file path as argument.");
-		else
-			dsa::Database database(std::string(argv[1]));
+		
+		dsa::Database database(argv[1]);
+		#endif
+	
+		#if defined(DEBUG) || defined(BENCHMARK)
+		// End timer
+		end = std::chrono::system_clock::now();
+		elapsed_seconds = end - start;
+		std::cout << "database, elapsed time: " << elapsed_seconds.count() << std::endl;
+		#endif
+
+		// Setup instruction look-up table
+		InstrMap instruction_map;
+		setup_function_lut(instruction_map);
+
+		std::string instruction;
+		bool quit = false;
+		do
+		{
+			std::cin >> instruction;
+			auto elem = instruction_map.find(instruction);
+			if (elem == instruction_map.end())
+			    quit = true;
+			else
+			{
+				try
+				{
+					#if defined(DEBUG) || defined(BENCHMARK)
+					// Start timer
+					start = std::chrono::system_clock::now();
+					#endif
+					quit = (elem->second)(database);
+					#if defined(DEBUG) || defined(BENCHMARK)
+					// End timer
+					end = std::chrono::system_clock::now();
+					elapsed_seconds = end - start;
+					std::cout << instruction << ", elapsed time: " << elapsed_seconds.count() << std::endl;
+					#endif
+				}
+				catch(std::runtime_error &e)
+				{
+					// Stop the program if run time error is caught.
+					quit = true;
+					std::cerr << "Caught a runtime_error exception: " << e.what () << std::endl;
+				}
+			}
+		}while(!quit);
 	}
 	catch(std::runtime_error &e)
 	{
 		std::cerr << "Caught a runtime_error exception: " << e.what () << std::endl;
 	}
-	#endif
-	#if defined(DEBUG) || defined(BENCHMARK)
-	// End timer
-	end = std::chrono::system_clock::now();
-	elapsed_seconds = end - start;
-	std::cout << "database, elapsed time: " << elapsed_seconds.count() << std::endl;
-	#endif
-
-	// Setup instruction look-up table
-	InstrMap instruction_map;
-	setup_function_lut(instruction_map);
-
-	std::string instruction;
-	bool quit = false;
-	do
-	{
-		std::cin >> instruction;
-		auto elem = instruction_map.find(instruction);
-		if (elem == instruction_map.end())
-		    quit = true;
-		else
-		{
-			try
-			{
-				#if defined(DEBUG) || defined(BENCHMARK)
-				// Start timer
-				start = std::chrono::system_clock::now();
-				#endif
-				quit = (elem->second)(database);
-				#if defined(DEBUG) || defined(BENCHMARK)
-				// End timer
-				end = std::chrono::system_clock::now();
-				elapsed_seconds = end - start;
-				std::cout << instruction << ", elapsed time: " << elapsed_seconds.count() << std::endl;
-				#endif
-			}
-			catch(std::runtime_error &e)
-			{
-				// Stop the program if run time error is caught.
-				quit = true;
-				std::cerr << "Caught a runtime_error exception: " << e.what () << std::endl;
-			}
-		}
-	}while(!quit);
 
 	return 0;
 }

@@ -218,6 +218,10 @@ namespace dsa
 			#endif
 
 			TData currentPos = 0;
+			//#pragma omp parallel 
+			//{
+			//#pragma omp single
+			//{
 			#ifndef MMF
 			std::string new_line;
 			while(!stream.eof())
@@ -242,13 +246,24 @@ namespace dsa
 
 				map.insert(std::make_pair(parse_field<TKey, USER_ID>(new_line, DELIM), currentPos));
 				#else
+
 				auto user = parse_field<TKey, USER_ID>(mmf, DELIM);
 				mmf.seekg(currentPos);
 				auto ad = parse_field<TKey, AD_ID>(mmf, DELIM);
-				
-				map.insert(std::make_pair(user, currentPos));
-				ad_id_map.insert(std::make_pair(ad, currentPos));
-				user_id_ad_id_map.insert(std::make_pair(user, ad));
+				//#pragma omp parallel
+				//{
+				//#pragma omp single nowait
+				//{
+					//#pragma omp task
+					map.insert(std::make_pair(user, currentPos));
+					//#pragma omp task
+					ad_id_map.insert(std::make_pair(ad, currentPos));
+					//#pragma omp task
+					user_id_ad_id_map.insert(std::make_pair(user, ad));
+				//}
+				//#pragma omp taskwait
+				//}
+
 				#endif
 
 				#ifdef DEBUG
@@ -261,6 +276,8 @@ namespace dsa
 				#endif
 				#endif
 			}
+			//}
+			//}
 			#ifdef DEBUG
 			std::cout << "... Complete!" << std::endl;
 			#endif
@@ -463,17 +480,12 @@ namespace dsa
 			database.stream.clear();
 			#endif
 
-			std::cout << "filter_wrapper_start" << std::endl;
 			// Search in the database
 			auto range = database.map.equal_range(_user_id);
-			std::cout << "filter_wrapper_end" << std::endl;
 
-			std::cout << "start exp list" << std::endl;
 			std::vector<TData> list;
 			for(auto it = range.first; it != range.second; ++it)
 				list.push_back(it->second);
-			std::cout << "end exp list" << std::endl;
-
 
 			// Start conversion
 			/*
@@ -668,7 +680,7 @@ namespace dsa
 			#ifdef DEBUG
 			std::cout << "...complete" << std::endl;
 			#endif
-			
+
 			// Start conversion
 			/*
 			int size = list.size();
