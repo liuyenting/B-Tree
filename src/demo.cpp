@@ -136,7 +136,7 @@ bool profit(dsa::Database& database)
 
 bool quit(dsa::Database& database)
 {
-	std::cout << "# leave the program" << std::endl;
+	//std::cout << "# leave the program" << std::endl;
 	return true;
 }
 
