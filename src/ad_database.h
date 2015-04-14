@@ -640,6 +640,10 @@ namespace dsa
 			{
 				std::vector<Entry> tmp_vec;
 
+				#ifdef DEBUG
+				std::cout << elem << std::endl;
+				#endif
+
 				auto range = database.ad_id_map.equal_range(elem);
 				for(auto it = range.first; it != range.second; ++it)
 				{
@@ -674,6 +678,19 @@ namespace dsa
 										   			   (lhs.get_title_id() == rhs.get_title_id()) &&
 										   			   (lhs.get_description_id() == rhs.get_description_id());
 										    }), tmp_vec.end());
+
+				#ifdef DEBUG
+				for(const auto& prop : tmp_vec)
+				{
+					std::cout << '\t'
+							  << prop.get_display_url() << ' '
+							  << prop.get_advertiser_id() << ' '
+							  << prop.get_keyword_id() << ' '
+							  << prop.get_title_id() << ' '
+							  << prop.get_description_id()
+							  << std::endl;
+				}
+				#endif
 
 				result[elem] = tmp_vec;
 			}

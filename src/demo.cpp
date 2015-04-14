@@ -87,6 +87,8 @@ bool impressed(dsa::Database& database)
 	#endif
 
 	PRINT_SEPARATOR
+	//dsa::KDD::impressed(database, u1, u2);
+	
 	for(const auto& elem : dsa::KDD::impressed(database, u1, u2))
 	{
 		std::cout << elem.first;
@@ -106,6 +108,7 @@ bool impressed(dsa::Database& database)
 					  << std::endl;
 		}
 	}
+	
 	PRINT_SEPARATOR
 
 	return false;

@@ -37,7 +37,7 @@ FINAL_MAIN = demo
 # Workstation setup
 KEY_FILE = key/csie_workstation
 ACCOUNT = b03902036
-SERVER = linux12.csie.ntu.edu.tw
+SERVER = linux5.csie.ntu.edu.tw
 
 # Remote command
 REMOTE_BASE_DIR = ~/DSA
@@ -48,7 +48,7 @@ COMMAND =
 # ====================
 # Help Configurations
 # ====================
-.DEFAULT_GOAL := help
+.DEFAULT_GOAL := all
 help:
 	@echo
 	@echo "===== Makefile Help Message ====="
